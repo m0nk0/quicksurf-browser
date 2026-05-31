@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "odJzVhtBX0U=",
+  "success": true,
+  "projectFilePath": "C:\\Project\\QuickSurfBrowser\\QuickSurfBrowser.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\валерий\\.nuget\\packages\\microsoft.web.webview2\\1.0.3967.48\\microsoft.web.webview2.1.0.3967.48.nupkg.sha512"
+  ],
+  "logs": []
+}
