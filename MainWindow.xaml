@@ -4,7 +4,105 @@
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         Title="QuickSurf" Height="700" Width="1100"
         WindowStartupLocation="CenterScreen"
-        Background="#FAF7F2">
+        Background="#FAF7F2"
+        Icon="Assets/logo.ico">
+
+    <Window.Resources>
+        <SolidColorBrush x:Key="PrimaryBrush" Color="#FF8C42"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="#4ECDC4"/>
+        <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="TextBrush" Color="#4A4A4A"/>
+        <SolidColorBrush x:Key="BorderBrush" Color="#E5E0D8"/>
+
+        <!-- ✅ Жирные иконки навигации -->
+        <Style x:Key="NavButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="FontSize" Value="20"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource PrimaryBrush}"/>
+                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="UrlTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Padding" Value="18,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <ScrollViewer x:Name="PART_ContentHost" Margin="0"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsFocused" Value="True">
+                    <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}"/>
+                    <Setter Property="BorderThickness" Value="2"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="TabItemStyle" TargetType="TabItem">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="14,6"/>
+            <Setter Property="Margin" Value="0,0,4,0"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="Border" Background="{TemplateBinding Background}" 
+                                BorderBrush="Transparent" BorderThickness="1" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="White"/>
+                                <Setter TargetName="Border" Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+                                <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#FFE8D6"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
@@ -15,67 +113,63 @@
         <!-- ВЕРХНЯЯ ПАНЕЛЬ -->
         <StackPanel Grid.Row="0" Background="#FAF7F2" Margin="12,12,12,6">
             <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                <Button Content="◀" Width="40" Height="40" Margin="0,0,8,0" 
-                        Background="White" BorderBrush="#E5E0D8" BorderThickness="1"
-                        Click="BtnBack_Click" Cursor="Hand"/>
-                <Button Content="▶" Width="40" Height="40" Margin="0,0,8,0" 
-                        Background="White" BorderBrush="#E5E0D8" BorderThickness="1"
-                        Click="BtnForward_Click" Cursor="Hand"/>
-                <Button Content="↻" Width="40" Height="40" Margin="0,0,8,0" 
-                        Background="White" BorderBrush="#E5E0D8" BorderThickness="1"
-                        Click="BtnRefresh_Click" Cursor="Hand"/>
+                <!-- ✅ Жирные иконки: Назад, Вперед, Обновить -->
+                <Button Content="◀" Style="{StaticResource NavButtonStyle}" Click="BtnBack_Click" ToolTip="Назад"/>
+                <Button Content="▶" Style="{StaticResource NavButtonStyle}" Click="BtnForward_Click" ToolTip="Вперед"/>
+                <Button Content="↻" Style="{StaticResource NavButtonStyle}" Click="BtnRefresh_Click" ToolTip="Обновить"/>
                 
-                <TextBox x:Name="UrlBox" Width="600" Height="40" Margin="0,0,12,0"
-                         Background="White" BorderBrush="#E5E0D8" BorderThickness="1"
-                         VerticalContentAlignment="Center" Padding="15,0" FontSize="14"
-                         KeyDown="UrlBox_KeyDown"/>
+                <TextBox x:Name="UrlBox" Style="{StaticResource UrlTextBoxStyle}" 
+                         Width="600" KeyDown="UrlBox_KeyDown" Margin="0,0,12,0"/>
                 
                 <Button Content="Go" Width="60" Height="40" Margin="0,0,10,0"
-                        Background="#FF8C42" Foreground="White" BorderThickness="0"
+                        Background="{StaticResource PrimaryBrush}" Foreground="White"
+                        BorderThickness="0" FontSize="14" FontWeight="SemiBold"
                         Click="BtnGo_Click" Cursor="Hand"/>
 
                 <Button Content="+" Width="40" Height="40"
-                        Background="#4ECDC4" Foreground="White" BorderThickness="0" FontSize="22"
+                        Background="{StaticResource AccentBrush}" Foreground="White"
+                        BorderThickness="0" FontSize="22" FontWeight="Bold"
                         Click="BtnNewTab_Click" Cursor="Hand" ToolTip="Новая вкладка"/>
                 
-                <Button Content="🕒" Width="40" Height="40" Margin="8,0,0,0"
-                        Background="White" BorderBrush="#E5E0D8" BorderThickness="1"
+                <Button Content="" Width="40" Height="40" Margin="8,0,0,0"
+                        Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
                         Click="BtnToggleHistory_Click" Cursor="Hand" ToolTip="История"/>
             </StackPanel>
 
             <TabControl x:Name="TabsControl" BorderThickness="0" Background="Transparent"
+                        ItemContainerStyle="{StaticResource TabItemStyle}"
                         SelectionChanged="TabsControl_SelectionChanged">
             </TabControl>
         </StackPanel>
 
-        <!-- ОСНОВНАЯ ОБЛАСТЬ С ИСТОРИЕЙ -->
+        <!-- ОСНОВНАЯ ОБЛАСТЬ -->
         <Grid Grid.Row="1" Margin="12,0,12,12">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="0"/> <!-- Скрыта по умолчанию -->
+                <ColumnDefinition Width="0"/>
             </Grid.ColumnDefinitions>
             
-            <!-- БРАУЗЕР -->
             <Border Grid.Column="0" Background="White" 
-                    BorderBrush="#E5E0D8" BorderThickness="1">
+                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
                 <wv2:WebView2 x:Name="WebView" DefaultBackgroundColor="White"/>
             </Border>
 
-            <!-- ПАНЕЛЬ ИСТОРИИ -->
             <Border x:Name="HistoryPanel" Grid.Column="1" Width="320" Background="#FAF7F2"
-                    BorderBrush="#E5E0D8" BorderThickness="1,0,0,0" Visibility="Collapsed">
+                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0" Visibility="Collapsed">
                 <DockPanel Margin="12">
                     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,12">
                         <TextBox x:Name="HistorySearchBox" Width="200" Height="32"
-                                 Background="White" BorderBrush="#E5E0D8" BorderThickness="1"
+                                 Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
                                  VerticalContentAlignment="Center" Padding="10,0" FontSize="13"
                                  TextChanged="HistorySearchBox_TextChanged"/>
-                        <Button Content="🗑️" Width="32" Height="32" Margin="8,0,0,0"
-                                Background="White" BorderBrush="#E5E0D8" BorderThickness="1"
-                                Click="BtnClearHistory_Click" Cursor="Hand" ToolTip="Очистить"/>
+                        <Button x:Name="BtnClearHistory" Content="🗑️" Width="32" Height="32" Margin="8,0,0,0"
+                                Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                Click="BtnClearHistory_Click" Cursor="Hand" ToolTip="Очистить историю"/>
                     </StackPanel>
                     <ListBox x:Name="HistoryList" Background="Transparent" BorderThickness="0"
-                             SelectionMode="Single" MouseDoubleClick="HistoryList_MouseDoubleClick">
+                             SelectionMode="Single" MouseDoubleClick="HistoryList_MouseDoubleClick"
+                             VirtualizingPanel.IsVirtualizing="True"
+                             VirtualizingPanel.VirtualizationMode="Recycling">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel Margin="0,6">
@@ -88,6 +182,116 @@
                     </ListBox>
                 </DockPanel>
             </Border>
+
+            <!-- СТАРТОВАЯ СТРАНИЦА -->
+            <Grid x:Name="StartPageContainer" Background="#FAF7F2" Visibility="Visible" Panel.ZIndex="10">
+                
+                <!-- ШАПКА: Логотип, Название, Управление -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,30,0,0">
+                    <Image Source="Assets/logo.png" Width="40" Height="40" Margin="0,0,15,0"/>
+                    <TextBlock Text="QuickSurf" FontSize="24" FontWeight="Bold" Foreground="#4A4A4A" VerticalAlignment="Center" Margin="0,0,40,0"/>
+                    
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Добавить ресурс" FontSize="16" VerticalAlignment="Center" Foreground="#4A4A4A" Margin="0,0,15,0"/>
+                        <Button Content="+" Width="36" Height="36" Background="{StaticResource AccentBrush}" Foreground="White" BorderThickness="0" FontSize="18" Cursor="Hand" Click="BtnAddTile_Click" ToolTip="Добавить сайт" VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <!-- Панель ввода (появляется справа от кнопки) -->
+                    <StackPanel x:Name="AddTileForm" Orientation="Horizontal" Visibility="Collapsed" Margin="15,0,0,0">
+                        <TextBox x:Name="NewTileTitle" Width="120" Height="32" Margin="0,0,10,0" VerticalContentAlignment="Center" Padding="8,0" Text="Название"/>
+                        <TextBox x:Name="NewTileUrl" Width="180" Height="32" Margin="0,0,10,0" VerticalContentAlignment="Center" Padding="8,0" Text="https://..."/>
+                        <Button Content="✓" Width="32" Height="32" Background="{StaticResource AccentBrush}" Foreground="White" BorderThickness="0" Cursor="Hand" Click="BtnConfirmAddTile_Click" Margin="0,0,5,0"/>
+                        <Button Content="✕" Width="32" Height="32" Background="{StaticResource BorderBrush}" Foreground="#4A4A4A" BorderThickness="0" Cursor="Hand" Click="BtnCancelAddTile_Click"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- ДАШБОРД 2x2 -->
+                <Grid Margin="20,90,20,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- 1. ИИ Помощники -->
+                    <Border Grid.Row="0" Grid.Column="0" Margin="15" Background="#FAF7F2" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="16" Padding="15">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="15" ShadowDepth="2" Opacity="0.06" Color="#000000"/>
+                        </Border.Effect>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="🤖 ИИ Помощники" FontSize="14" FontWeight="SemiBold" Foreground="#4A4A4A" Margin="0,0,0,15" HorizontalAlignment="Center" Opacity="0.8"/>
+                            <UniformGrid Columns="2" Rows="2" HorizontalAlignment="Center">
+                                <Border Width="90" Height="90" Margin="8" Background="White" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="12" Cursor="Hand" Tag="Qwen|https://chat.qwen.ai">
+                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Image Width="40" Height="40" Margin="0,0,0,6"><Image.Source><BitmapImage UriSource="https://www.google.com/s2/favicons?domain=chat.qwen.ai&amp;sz=64"/></Image.Source></Image>
+                                        <TextBlock Text="Qwen" TextAlignment="Center" FontSize="11" Foreground="#4A4A4A" FontWeight="Medium"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Width="90" Height="90" Margin="8" Background="White" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="12" Cursor="Hand" Tag="DeepSeek|https://chat.deepseek.com">
+                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Image Width="40" Height="40" Margin="0,0,0,6"><Image.Source><BitmapImage UriSource="https://www.google.com/s2/favicons?domain=chat.deepseek.com&amp;sz=64"/></Image.Source></Image>
+                                        <TextBlock Text="DeepSeek" TextAlignment="Center" FontSize="11" Foreground="#4A4A4A" FontWeight="Medium"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Width="90" Height="90" Margin="8" Background="White" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="12" Cursor="Hand" Tag="Алиса|https://alice.yandex.ru">
+                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Image Width="40" Height="40" Margin="0,0,0,6"><Image.Source><BitmapImage UriSource="https://www.google.com/s2/favicons?domain=alice.yandex.ru&amp;sz=64"/></Image.Source></Image>
+                                        <TextBlock Text="Алиса" TextAlignment="Center" FontSize="11" Foreground="#4A4A4A" FontWeight="Medium"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Width="90" Height="90" Margin="8" Background="White" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="12" Cursor="Hand" Tag="ChatGPT|https://chatgpt.com">
+                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Image Width="40" Height="40" Margin="0,0,0,6"><Image.Source><BitmapImage UriSource="https://www.google.com/s2/favicons?domain=chatgpt.com&amp;sz=64"/></Image.Source></Image>
+                                        <TextBlock Text="ChatGPT" TextAlignment="Center" FontSize="11" Foreground="#4A4A4A" FontWeight="Medium"/>
+                                    </StackPanel>
+                                </Border>
+                            </UniformGrid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 2. Избранное -->
+                    <Border Grid.Row="0" Grid.Column="1" Margin="15" Background="#FAF7F2" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="16" Padding="20">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="15" ShadowDepth="2" Opacity="0.06" Color="#000000"/>
+                        </Border.Effect>
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Opacity="0.4">
+                            <TextBlock Text="⭐" FontSize="40" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Избранное" FontSize="16" FontWeight="SemiBold" Foreground="#4A4A4A" Margin="0,10,0,0" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 3. История -->
+                    <Border Grid.Row="1" Grid.Column="0" Margin="15" Background="#FAF7F2" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="16" Padding="20">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="15" ShadowDepth="2" Opacity="0.06" Color="#000000"/>
+                        </Border.Effect>
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Opacity="0.4">
+                            <TextBlock Text="📜" FontSize="40" HorizontalAlignment="Center"/>
+                            <TextBlock Text="История" FontSize="16" FontWeight="SemiBold" Foreground="#4A4A4A" Margin="0,10,0,0" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 4. Настройки -->
+                    <Border Grid.Row="1" Grid.Column="1" Margin="15" Background="#FAF7F2" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="16" Padding="20">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="15" ShadowDepth="2" Opacity="0.06" Color="#000000"/>
+                        </Border.Effect>
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Opacity="0.4">
+                            <TextBlock Text="️" FontSize="40" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Настройки" FontSize="16" FontWeight="SemiBold" Foreground="#4A4A4A" Margin="0,10,0,0" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <!-- ПАНЕЛЬ ПОЛЬЗОВАТЕЛЬСКИХ ПЛИТОК -->
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,0,0,20" VerticalAlignment="Bottom" Height="120" Panel.ZIndex="50">
+                    <WrapPanel x:Name="TilesWrapPanel" HorizontalAlignment="Center"/>
+                </ScrollViewer>
+
+            </Grid>
         </Grid>
     </Grid>
 </Window>

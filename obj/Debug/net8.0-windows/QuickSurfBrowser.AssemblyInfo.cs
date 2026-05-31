@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("QuickSurfBrowser")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7c7a45314b5a75a9867fe48ad89f546f09529a11")]
 [assembly: System.Reflection.AssemblyProductAttribute("QuickSurfBrowser")]
 [assembly: System.Reflection.AssemblyTitleAttribute("QuickSurfBrowser")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

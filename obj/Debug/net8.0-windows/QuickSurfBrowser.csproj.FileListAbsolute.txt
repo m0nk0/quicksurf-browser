@@ -29,3 +29,4 @@ C:\Project\QuickSurfBrowser\obj\Debug\net8.0-windows\refint\QuickSurfBrowser.dll
 C:\Project\QuickSurfBrowser\obj\Debug\net8.0-windows\QuickSurfBrowser.pdb
 C:\Project\QuickSurfBrowser\obj\Debug\net8.0-windows\QuickSurfBrowser.genruntimeconfig.cache
 C:\Project\QuickSurfBrowser\obj\Debug\net8.0-windows\ref\QuickSurfBrowser.dll
+C:\Project\QuickSurfBrowser\obj\Debug\net8.0-windows\QuickSurfBrowser.sourcelink.json
