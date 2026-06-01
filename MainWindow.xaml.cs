@@ -9,9 +9,12 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
+
+#nullable disable
 
 namespace QuickSurfBrowser
 {
@@ -21,12 +24,12 @@ namespace QuickSurfBrowser
         private readonly List<TabItem> _tabs = new();
         private readonly List<string> _urls = new();
         private int _counter = 1;
-        private CoreWebView2Environment? _env;
+        private CoreWebView2Environment _env;
+        private Timer _searchTimer;
 
         private readonly string _dataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "QuickSurf");
         private readonly string _historyPath;
         private List<HistoryItem> _history = new();
-        private Timer? _searchTimer;
 
         private readonly string _tilesPath;
         private List<Tile> _tiles = new();
@@ -59,11 +62,7 @@ namespace QuickSurfBrowser
                     if (parts.Length == 2)
                     {
                         var tile = new Tile { Title = parts[0], Url = parts[1] };
-                        border.MouseLeftButtonUp += (s, e) =>
-                        {
-                            ShowBrowser();
-                            Navigate(tile.Url);
-                        };
+                        border.MouseLeftButtonUp += (s, e) => { ShowBrowser(); Navigate(tile.Url); };
                     }
                 }
             }
@@ -88,9 +87,9 @@ namespace QuickSurfBrowser
             try
             {
                 _env = await CoreWebView2Environment.CreateAsync();
-                await WebView.EnsureCoreWebView2Async(_env!);
+                await WebView.EnsureCoreWebView2Async(_env);
                 WebView.CoreWebView2.NavigationCompleted += CoreWebView2_NavigationCompleted;
-                CreateNewTab();
+                CreateNewTab("Старт");
             }
             catch (Exception ex)
             {
@@ -98,7 +97,7 @@ namespace QuickSurfBrowser
             }
         }
 
-        private void CoreWebView2_NavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
+        private void CoreWebView2_NavigationCompleted(object sender, CoreWebView2NavigationCompletedEventArgs e)
         {
             try
             {
@@ -123,11 +122,11 @@ namespace QuickSurfBrowser
             catch { }
         }
 
-        private void CreateNewTab()
+        private void CreateNewTab(string title = null)
         {
             var tab = new TabItem();
             var header = new StackPanel { Orientation = Orientation.Horizontal };
-            var text = new TextBlock { Text = $"Вкладка {_counter}", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) };
+            var text = new TextBlock { Text = title ?? $"Вкладка {_counter}", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) };
             var closeBtn = new Button { Content = "✕", Width = 18, Height = 18, Background = null, BorderThickness = new Thickness(0), Foreground = Brushes.Gray, Cursor = Cursors.Hand };
             closeBtn.Click += (s, e) => CloseTab(tab);
             header.Children.Add(text); header.Children.Add(closeBtn); tab.Header = header;
@@ -143,7 +142,7 @@ namespace QuickSurfBrowser
         {
             int idx = _tabs.IndexOf(tabToClose); if (idx < 0) return;
             _tabs.RemoveAt(idx); _urls.RemoveAt(idx); TabsControl.Items.Remove(tabToClose);
-            if (_tabs.Count == 0) CreateNewTab();
+            if (_tabs.Count == 0) CreateNewTab("Старт");
             else if (TabsControl.SelectedItem == tabToClose) TabsControl.SelectedIndex = Math.Min(idx, _tabs.Count - 1);
         }
 
@@ -167,19 +166,8 @@ namespace QuickSurfBrowser
             }
         }
 
-        // ✅ ИСПРАВЛЕНО: проверка видимости и наличия истории
-        private void BtnBack_Click(object s, RoutedEventArgs e)
-        {
-            if (WebView.Visibility == Visibility.Visible && WebView.CoreWebView2?.CanGoBack == true)
-                WebView.CoreWebView2.GoBack();
-        }
-
-        private void BtnForward_Click(object s, RoutedEventArgs e)
-        {
-            if (WebView.Visibility == Visibility.Visible && WebView.CoreWebView2?.CanGoForward == true)
-                WebView.CoreWebView2.GoForward();
-        }
-
+        private void BtnBack_Click(object s, RoutedEventArgs e) { if (WebView.Visibility == Visibility.Visible && WebView.CoreWebView2?.CanGoBack == true) WebView.CoreWebView2.GoBack(); }
+        private void BtnForward_Click(object s, RoutedEventArgs e) { if (WebView.Visibility == Visibility.Visible && WebView.CoreWebView2?.CanGoForward == true) WebView.CoreWebView2.GoForward(); }
         private void BtnRefresh_Click(object s, RoutedEventArgs e) => WebView.CoreWebView2?.Reload();
         private void BtnGo_Click(object s, RoutedEventArgs e) => Navigate(UrlBox.Text);
         private void BtnNewTab_Click(object s, RoutedEventArgs e) => CreateNewTab();
@@ -193,21 +181,48 @@ namespace QuickSurfBrowser
             UrlBox.Text = url; LoadUrl(url);
         }
 
-        private void BtnToggleHistory_Click(object sender, RoutedEventArgs e)
+        private void BtnToggleAI_Click(object s, RoutedEventArgs e)
         {
-            if (HistoryPanel == null) return;
-            if (HistoryPanel.Visibility == Visibility.Visible)
-            {
-                HistoryPanel.Visibility = Visibility.Collapsed;
-                var parentGrid = HistoryPanel.Parent as Grid;
-                if (parentGrid != null) parentGrid.ColumnDefinitions[1].Width = new GridLength(0);
-            }
+            if (AISidebar.Visibility == Visibility.Visible) AISidebar.Visibility = Visibility.Collapsed;
             else
             {
-                HistoryPanel.Visibility = Visibility.Visible;
-                var parentGrid = HistoryPanel.Parent as Grid;
-                if (parentGrid != null) { parentGrid.ColumnDefinitions[1].Width = new GridLength(320); RefreshHistoryList(); }
+                if (HistoryPanel.Visibility == Visibility.Visible) HistoryPanel.Visibility = Visibility.Collapsed;
+                AISidebar.Visibility = Visibility.Visible;
+                ChatInput.Focus();
             }
+            UpdateSidebarWidth();
+        }
+
+        private void BtnToggleHistory_Click(object sender, RoutedEventArgs e)
+        {
+            if (HistoryPanel.Visibility == Visibility.Visible) HistoryPanel.Visibility = Visibility.Collapsed;
+            else
+            {
+                if (AISidebar.Visibility == Visibility.Visible) AISidebar.Visibility = Visibility.Collapsed;
+                HistoryPanel.Visibility = Visibility.Visible;
+                RefreshHistoryList();
+            }
+            UpdateSidebarWidth();
+        }
+
+        private void BtnCloseSidebar_Click(object s, RoutedEventArgs e)
+        {
+            AISidebar.Visibility = Visibility.Collapsed;
+            UpdateSidebarWidth();
+        }
+
+        private void BtnCloseHistory_Click(object s, RoutedEventArgs e)
+        {
+            HistoryPanel.Visibility = Visibility.Collapsed;
+            UpdateSidebarWidth();
+        }
+
+        private void UpdateSidebarWidth()
+        {
+            if (AISidebar.Visibility == Visibility.Visible || HistoryPanel.Visibility == Visibility.Visible)
+                RootGrid.ColumnDefinitions[1].Width = new GridLength(400);
+            else
+                RootGrid.ColumnDefinitions[1].Width = new GridLength(0);
         }
 
         private void HistorySearchBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -220,8 +235,7 @@ namespace QuickSurfBrowser
         {
             if (HistoryList == null || _history == null) return;
             var query = (HistorySearchBox?.Text ?? "").Trim().ToLower();
-            var filtered = string.IsNullOrEmpty(query) ? _history
-                : _history.Where(h => (h.Title ?? "").ToLower().Contains(query) || (h.Url ?? "").ToLower().Contains(query)).ToList();
+            var filtered = string.IsNullOrEmpty(query) ? _history : _history.Where(h => (h.Title ?? "").ToLower().Contains(query) || (h.Url ?? "").ToLower().Contains(query)).ToList();
             HistoryList.ItemsSource = null; HistoryList.ItemsSource = filtered;
         }
 
@@ -263,7 +277,8 @@ namespace QuickSurfBrowser
                 if (HistoryList.SelectedItem is HistoryItem item && !string.IsNullOrEmpty(item.Url))
                 {
                     Navigate(item.Url);
-                    if (HistoryPanel != null) HistoryPanel.Visibility = Visibility.Collapsed;
+                    HistoryPanel.Visibility = Visibility.Collapsed;
+                    UpdateSidebarWidth();
                 }
             }
             catch { }
@@ -271,57 +286,41 @@ namespace QuickSurfBrowser
 
         private void BtnHome_Click(object sender, RoutedEventArgs e) => ShowStartPage();
         
-        // ✅ ИСПРАВЛЕНО: обновление заголовка вкладки и очистка URL при возврате на главную
         private void ShowStartPage()
         {
-            UpdateCurrentTabTitle("Главная");
+            UpdateCurrentTabTitle("Старт");
             UrlBox.Text = "";
-
             StartPageContainer.Visibility = Visibility.Visible;
             WebView.Visibility = Visibility.Collapsed;
-            if (HistoryPanel.Visibility == Visibility.Visible)
-            {
-                HistoryPanel.Visibility = Visibility.Collapsed;
-                var parentGrid = HistoryPanel.Parent as Grid;
-                if (parentGrid != null) parentGrid.ColumnDefinitions[1].Width = new GridLength(0);
-            }
+            if (HistoryPanel.Visibility == Visibility.Visible) HistoryPanel.Visibility = Visibility.Collapsed;
+            if (AISidebar.Visibility == Visibility.Visible) AISidebar.Visibility = Visibility.Collapsed;
+            UpdateSidebarWidth();
         }
 
-        private void ShowBrowser()
-        {
-            StartPageContainer.Visibility = Visibility.Collapsed;
-            WebView.Visibility = Visibility.Visible;
+        private void ShowBrowser() 
+        { 
+            StartPageContainer.Visibility = Visibility.Collapsed; 
+            WebView.Visibility = Visibility.Visible; 
+            
+            if (HistoryPanel.Visibility == Visibility.Visible) HistoryPanel.Visibility = Visibility.Collapsed;
+            if (AISidebar.Visibility == Visibility.Visible) AISidebar.Visibility = Visibility.Collapsed;
+            
+            UpdateSidebarWidth();
         }
 
-        // Вспомогательный метод для безопасного обновления заголовка
         private void UpdateCurrentTabTitle(string title)
         {
             if (TabsControl.SelectedIndex < 0 || TabsControl.SelectedIndex >= _tabs.Count) return;
-            if (_tabs[TabsControl.SelectedIndex].Header is StackPanel header && header.Children.Count > 0 && header.Children[0] is TextBlock tb)
-            {
-                tb.Text = title;
-            }
+            if (_tabs[TabsControl.SelectedIndex].Header is StackPanel header && header.Children.Count > 0 && header.Children[0] is TextBlock tb) tb.Text = title;
         }
 
         private void LoadTiles()
         {
-            try
-            {
-                if (File.Exists(_tilesPath))
-                {
-                    var json = File.ReadAllText(_tilesPath);
-                    _tiles = JsonSerializer.Deserialize<List<Tile>>(json) ?? new List<Tile>();
-                }
-            }
-            catch { _tiles = new List<Tile>(); }
+            try { if (File.Exists(_tilesPath)) { var json = File.ReadAllText(_tilesPath); _tiles = JsonSerializer.Deserialize<List<Tile>>(json) ?? new List<Tile>(); } } catch { _tiles = new List<Tile>(); }
             RenderTiles();
         }
 
-        private void SaveTiles()
-        {
-            try { File.WriteAllText(_tilesPath, JsonSerializer.Serialize(_tiles)); }
-            catch { }
-        }
+        private void SaveTiles() { try { File.WriteAllText(_tilesPath, JsonSerializer.Serialize(_tiles)); } catch { } }
 
         private void RenderTiles()
         {
@@ -330,75 +329,146 @@ namespace QuickSurfBrowser
             {
                 var border = new Border
                 {
-                    Width = 110, Height = 110, Margin = new Thickness(10),
-                    Background = Brushes.White, BorderBrush = (Brush)FindResource("BorderBrush"),
-                    BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(8),
-                    Cursor = Cursors.Hand, ToolTip = tile.Url
+                    Width = 140, Height = 64, Margin = new Thickness(8, 8, 8, 8), Background = Brushes.White,
+                    BorderBrush = (Brush)FindResource("BorderBrush"), BorderThickness = new Thickness(1, 1, 1, 1),
+                    CornerRadius = new CornerRadius(8), Cursor = Cursors.Hand, ToolTip = tile.Url, SnapsToDevicePixels = true
                 };
                 
-                var stack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8) };
-                var img = new Image { Width = 40, Height = 40, Margin = new Thickness(0,0,0,8) };
-                try
-                {
-                    var uri = new Uri(tile.Url);
-                    img.Source = new BitmapImage(new Uri($"https://www.google.com/s2/favicons?domain={uri.Host}&sz=64"));
-                }
-                catch { img.Source = null; }
+                var stack = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+                var img = new Image { Width = 28, Height = 28, Margin = new Thickness(0, 0, 8, 0) };
                 
-                var text = new TextBlock { Text = tile.Title, TextAlignment = TextAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, FontSize = 12, Foreground = (Brush)FindResource("TextBrush") };
-                stack.Children.Add(img); stack.Children.Add(text);
-                border.Child = stack;
+                try { var uri = new Uri(tile.Url); img.Source = new BitmapImage(new Uri($"https://www.google.com/s2/favicons?domain={uri.Host}&sz=64")); } catch { img.Source = null; }
                 
-                border.MouseLeftButtonUp += (s, e) =>
-                {
-                    ShowBrowser();
-                    Navigate(tile.Url);
-                };
+                var text = new TextBlock { Text = tile.Title, TextAlignment = TextAlignment.Left, TextTrimming = TextTrimming.CharacterEllipsis, FontSize = 12, FontWeight = FontWeights.Medium, Foreground = (Brush)FindResource("TextBrush"), VerticalAlignment = VerticalAlignment.Center, MaxWidth = 95 };
+                stack.Children.Add(img); stack.Children.Add(text); border.Child = stack;
                 
-                border.MouseRightButtonUp += (s, e) =>
-                {
-                    if (MessageBox.Show($"Удалить \"{tile.Title}\"?", "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
-                    {
-                        _tiles.Remove(tile);
-                        SaveTiles();
-                        RenderTiles();
-                    }
-                };
-
+                border.MouseLeftButtonUp += (s, e) => { ShowBrowser(); Navigate(tile.Url); };
+                border.MouseRightButtonUp += (s, e) => { if (MessageBox.Show($"Удалить \"{tile.Title}\"?", "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes) { _tiles.Remove(tile); SaveTiles(); RenderTiles(); } };
                 TilesWrapPanel.Children.Add(border);
             }
         }
 
-        private void BtnAddTile_Click(object sender, RoutedEventArgs e)
-        {
-            NewTileTitle.Text = "";
-            NewTileUrl.Text = "https://";
-            AddTileForm.Visibility = Visibility.Visible;
-            NewTileTitle.Focus();
-        }
-
+        private void BtnAddTile_Click(object sender, RoutedEventArgs e) { NewTileTitle.Text = ""; NewTileUrl.Text = "https://"; AddTileForm.Visibility = Visibility.Visible; NewTileTitle.Focus(); }
         private void BtnConfirmAddTile_Click(object sender, RoutedEventArgs e)
         {
-            var title = NewTileTitle.Text.Trim();
-            var url = NewTileUrl.Text.Trim();
-            if (string.IsNullOrEmpty(title) || string.IsNullOrEmpty(url) || url == "https://")
-            {
-                MessageBox.Show("Заполните название и ссылку.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
+            var title = NewTileTitle.Text.Trim(); var url = NewTileUrl.Text.Trim();
+            if (string.IsNullOrEmpty(title) || string.IsNullOrEmpty(url) || url == "https://") { MessageBox.Show("Заполните название и ссылку.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
             if (!url.StartsWith("http")) url = "https://" + url;
-            
-            _tiles.Add(new Tile { Title = title, Url = url });
-            SaveTiles();
-            RenderTiles();
-            AddTileForm.Visibility = Visibility.Collapsed;
+            _tiles.Add(new Tile { Title = title, Url = url }); SaveTiles(); RenderTiles(); AddTileForm.Visibility = Visibility.Collapsed;
+        }
+        private void BtnCancelAddTile_Click(object sender, RoutedEventArgs e) { NewTileTitle.Text = ""; NewTileUrl.Text = "https://"; AddTileForm.Visibility = Visibility.Collapsed; }
+
+        private async void BtnSendChat_Click(object s, RoutedEventArgs e) => await SendChatMessage();
+        private async void ChatInput_KeyDown(object s, KeyEventArgs e) { if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.None) { e.Handled = true; await SendChatMessage(); } }
+        
+        private async Task SendChatMessage()
+        {
+            var message = ChatInput.Text.Trim(); if (string.IsNullOrWhiteSpace(message)) return;
+            var provider = (AIProviderComboBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "ChatGPT";
+            AddChatMessage(message, true); ChatInput.Text = "";
+            var loading = AddChatMessage("Думаю...", false, true);
+            string response = await Task.Run(() => SimulateAIResponse(provider, message));
+            ChatMessages.Children.Remove(loading); AddChatMessage(response, false);
         }
 
-        private void BtnCancelAddTile_Click(object sender, RoutedEventArgs e)
+        private Border AddChatMessage(string text, bool isUser, bool isLoading = false)
         {
-            NewTileTitle.Text = "";
-            NewTileUrl.Text = "https://";
-            AddTileForm.Visibility = Visibility.Collapsed;
+            var container = new Border { Margin = new Thickness(0, 0, 0, 15), HorizontalAlignment = isUser ? HorizontalAlignment.Right : HorizontalAlignment.Left };
+            var bubble = new Border { Background = isUser ? (Brush)FindResource("PrimaryBrush") : Brushes.White, CornerRadius = new CornerRadius(12), Padding = new Thickness(12, 10, 12, 10), MaxWidth = 320 };
+            if (!isLoading) bubble.Effect = new DropShadowEffect { BlurRadius = 10, ShadowDepth = 2, Opacity = 0.1 };
+            var tb = new TextBlock { Text = text, Foreground = isUser ? Brushes.White : (Brush)FindResource("TextBrush"), FontSize = 13, TextWrapping = TextWrapping.Wrap, LineHeight = 18 };
+            if (isLoading) { tb.FontStyle = FontStyles.Italic; tb.Foreground = Brushes.Gray; }
+            bubble.Child = tb; container.Child = bubble; ChatMessages.Children.Add(container); ChatScrollViewer.ScrollToEnd();
+            return container;
+        }
+
+        private string SimulateAIResponse(string provider, string message)
+        {
+            Thread.Sleep(1200);
+            return provider switch
+            {
+                "ChatGPT" => $"[ChatGPT] Принято: \"{message.Substring(0, Math.Min(40, message.Length))}...\"\n\nПрототип. Скоро подключим OpenAI API.",
+                "Claude" => $"[Claude] Анализирую...\n\nПрототип активен. Anthropic API скоро.",
+                "Gemini" => $"[Gemini] Обрабатываю...\n\nGoogle Gemini API в очереди.",
+                "Qwen" => $"[Qwen] Понял!\n\nQwen API подключение в разработке.",
+                "DeepSeek" => $"[DeepSeek] Думаю...\n\nПрототип работает. Скоро реальные ответы.",
+                "GigaChat" => $"[GigaChat] Принимаю.\n\nSber GigaChat интеграция скоро.",
+                "Алиса" => $"[Алиса] Хорошо!\n\nYandex API следующим этапом.",
+                "Copilot" => $"[Copilot] Анализирую...\n\nMicrosoft Copilot API скоро.",
+                _ => "Выберите ИИ из списка."
+            };
+        }
+
+        private void CtxBack_Click(object s, RoutedEventArgs e) => WebView.CoreWebView2?.GoBack();
+        private void CtxForward_Click(object s, RoutedEventArgs e) => WebView.CoreWebView2?.GoForward();
+        private void CtxRefresh_Click(object s, RoutedEventArgs e) => WebView.CoreWebView2?.Reload();
+        private void CtxCopy_Click(object s, RoutedEventArgs e) => WebView.CoreWebView2?.ExecuteScriptAsync("document.execCommand('copy')");
+        private async void CtxSearch_Click(object s, RoutedEventArgs e) { var t = await WebView.CoreWebView2.ExecuteScriptAsync("window.getSelection().toString()"); if (!string.IsNullOrWhiteSpace(t) && t != "\"\"") Navigate($"https://www.google.com/search?q={Uri.EscapeDataString(t)}"); }
+        private async void CtxAITranslate_Click(object s, RoutedEventArgs e) { var t = await WebView.CoreWebView2.ExecuteScriptAsync("window.getSelection().toString()"); if (string.IsNullOrWhiteSpace(t) || t == "\"\"") { MessageBox.Show("Выделите текст", "AI", MessageBoxButton.OK, MessageBoxImage.Information); return; } OpenAISidebar($"Переведи на русский:\n\n{t}"); }
+        private async void CtxAIExplain_Click(object s, RoutedEventArgs e) { var t = await WebView.CoreWebView2.ExecuteScriptAsync("window.getSelection().toString()"); if (string.IsNullOrWhiteSpace(t) || t == "\"\"") { MessageBox.Show("Выделите текст", "AI", MessageBoxButton.OK, MessageBoxImage.Information); return; } OpenAISidebar($"Объясни простыми словами:\n\n{t}"); }
+        private async void CtxAISummarize_Click(object s, RoutedEventArgs e) { var title = WebView.CoreWebView2.DocumentTitle; var content = await WebView.CoreWebView2.ExecuteScriptAsync("document.body.innerText"); if (content.Length > 5000) content = content.Substring(0, 5000) + "..."; OpenAISidebar($"Краткое содержание \"{title}\":\n\n{content}"); }
+        private async void CtxAICheckCode_Click(object s, RoutedEventArgs e) { var t = await WebView.CoreWebView2.ExecuteScriptAsync("window.getSelection().toString()"); if (string.IsNullOrWhiteSpace(t) || t == "\"\"") { MessageBox.Show("Выделите код", "AI", MessageBoxButton.OK, MessageBoxImage.Information); return; } OpenAISidebar($"Найди ошибки и улучши код:\n\n{t}"); }
+        
+        private void OpenAISidebar(string prompt = null) 
+        { 
+            AISidebar.Visibility = Visibility.Visible; 
+            UpdateSidebarWidth();
+            if (!string.IsNullOrWhiteSpace(prompt)) { ChatInput.Text = prompt; ChatInput.Focus(); } 
+        }
+
+        // ✅ ОБРАБОТЧИКИ PLACEHOLDER ДЛЯ ПОИСКА
+        private void SearchBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            if (SearchBox.Text == "Введите запрос...")
+            {
+                SearchBox.Text = "";
+                SearchBox.Foreground = (Brush)FindResource("TextBrush");
+            }
+        }
+
+        private void SearchBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(SearchBox.Text))
+            {
+                SearchBox.Text = "Введите запрос...";
+                SearchBox.Foreground = Brushes.Gray;
+            }
+        }
+
+        // ✅ МЕТОДЫ ПОИСКА
+        private void SearchBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter) PerformSearch();
+        }
+
+        private void BtnSearch_Click(object sender, RoutedEventArgs e)
+        {
+            PerformSearch();
+        }
+
+        private void PerformSearch()
+        {
+            var query = SearchBox.Text.Trim();
+            if (string.IsNullOrWhiteSpace(query) || query == "Введите запрос...") return;
+            
+            string selectedEngine = "🔍 Google";
+            if (SearchEngineComboBox.SelectedItem is ComboBoxItem selectedItem)
+            {
+                selectedEngine = selectedItem.Content?.ToString() ?? "🔍 Google";
+            }
+            
+            string searchUrl = selectedEngine switch
+            {
+                "🔍 Google" => $"https://www.google.com/search?q={Uri.EscapeDataString(query)}",
+                "🤖 Perplexity" => $"https://www.perplexity.ai/search?q={Uri.EscapeDataString(query)}",
+                "🇷🇺 Yandex" => $"https://yandex.ru/search/?text={Uri.EscapeDataString(query)}",
+                "🦆 DuckDuckGo" => $"https://duckduckgo.com/?q={Uri.EscapeDataString(query)}",
+                "🤖 Bing AI" => $"https://www.bing.com/search?q={Uri.EscapeDataString(query)}&showconv=1",
+                _ => $"https://www.google.com/search?q={Uri.EscapeDataString(query)}"
+            };
+            
+            ShowBrowser();
+            Navigate(searchUrl);
         }
     }
 

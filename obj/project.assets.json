@@ -2,7 +2,7 @@
   "version": 3,
   "targets": {
     "net8.0-windows7.0": {
-      "Microsoft.Web.WebView2/1.0.3967.48": {
+      "Microsoft.Web.WebView2/1.0.2792.45": {
         "type": "package",
         "build": {
           "buildTransitive/Microsoft.Web.WebView2.targets": {}
@@ -25,10 +25,10 @@
     }
   },
   "libraries": {
-    "Microsoft.Web.WebView2/1.0.3967.48": {
-      "sha512": "b7dZ5kZ9bfU5Yo11M8feCOoiyalXCN+2Gsw674RBDBmQ2dJV5EOXb8/ivN2LuLJ+VO2V7FmK6l6LsyfEnG1lXw==",
+    "Microsoft.Web.WebView2/1.0.2792.45": {
+      "sha512": "KOlLJSq70OySfU8mdhWdh9iOyApazWsIb6CmSz+YTJ5MmwLcsCLMW0qemORo7Si3A7VhLDIH3jwpMhPxodfkuA==",
       "type": "package",
-      "path": "microsoft.web.webview2/1.0.3967.48",
+      "path": "microsoft.web.webview2/1.0.2792.45",
       "hasTools": true,
       "files": [
         ".nupkg.metadata",
@@ -64,17 +64,14 @@
         "lib/net462/Microsoft.Web.WebView2.WinForms.xml",
         "lib/net462/Microsoft.Web.WebView2.Wpf.dll",
         "lib/net462/Microsoft.Web.WebView2.Wpf.xml",
-        "lib_manual/net5.0-windows10.0.17763.0/Microsoft.Web.WebView2.Wpf.dll",
-        "lib_manual/net5.0-windows10.0.17763.0/Microsoft.Web.WebView2.Wpf.xml",
         "lib_manual/net6.0-windows10.0.17763.0/Microsoft.Web.WebView2.Core.Projection.dll",
-        "lib_manual/net8.0-windows10.0.17763.0/Microsoft.Web.WebView2.Core.Projection.dll",
         "lib_manual/netcoreapp3.0/Microsoft.Web.WebView2.Core.dll",
         "lib_manual/netcoreapp3.0/Microsoft.Web.WebView2.Core.xml",
         "lib_manual/netcoreapp3.0/Microsoft.Web.WebView2.WinForms.dll",
         "lib_manual/netcoreapp3.0/Microsoft.Web.WebView2.WinForms.xml",
         "lib_manual/netcoreapp3.0/Microsoft.Web.WebView2.Wpf.dll",
         "lib_manual/netcoreapp3.0/Microsoft.Web.WebView2.Wpf.xml",
-        "microsoft.web.webview2.1.0.3967.48.nupkg.sha512",
+        "microsoft.web.webview2.1.0.2792.45.nupkg.sha512",
         "microsoft.web.webview2.nuspec",
         "runtimes/win-arm64/native/WebView2Loader.dll",
         "runtimes/win-arm64/native_uap/Microsoft.Web.WebView2.Core.dll",
@@ -125,7 +122,7 @@
   },
   "projectFileDependencyGroups": {
     "net8.0-windows7.0": [
-      "Microsoft.Web.WebView2 >= 1.0.3967.48"
+      "Microsoft.Web.WebView2 >= 1.0.2792.45"
     ]
   },
   "packageFolders": {
@@ -172,7 +169,7 @@
         "dependencies": {
           "Microsoft.Web.WebView2": {
             "target": "Package",
-            "version": "[1.0.3967.48, )"
+            "version": "[1.0.2792.45, )"
           }
         },
         "imports": [

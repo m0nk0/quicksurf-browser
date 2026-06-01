@@ -10,8 +10,8 @@ C:\Project\QuickSurfBrowser\bin\Debug\net8.0-windows\Microsoft.Web.WebView2.Core
 C:\Project\QuickSurfBrowser\bin\Debug\net8.0-windows\Microsoft.Web.WebView2.WinForms.dll
 C:\Project\QuickSurfBrowser\bin\Debug\net8.0-windows\Microsoft.Web.WebView2.Wpf.dll
 C:\Project\QuickSurfBrowser\bin\Debug\net8.0-windows\Microsoft.Web.WebView2.Core.xml
-C:\Project\QuickSurfBrowser\bin\Debug\net8.0-windows\Microsoft.Web.WebView2.WinForms.xml
 C:\Project\QuickSurfBrowser\bin\Debug\net8.0-windows\Microsoft.Web.WebView2.Wpf.xml
+C:\Project\QuickSurfBrowser\bin\Debug\net8.0-windows\Microsoft.Web.WebView2.WinForms.xml
 C:\Project\QuickSurfBrowser\obj\Debug\net8.0-windows\QuickSurfBrowser.csproj.AssemblyReference.cache
 C:\Project\QuickSurfBrowser\obj\Debug\net8.0-windows\MainWindow.baml
 C:\Project\QuickSurfBrowser\obj\Debug\net8.0-windows\MainWindow.g.cs
@@ -23,10 +23,10 @@ C:\Project\QuickSurfBrowser\obj\Debug\net8.0-windows\QuickSurfBrowser.GeneratedM
 C:\Project\QuickSurfBrowser\obj\Debug\net8.0-windows\QuickSurfBrowser.AssemblyInfoInputs.cache
 C:\Project\QuickSurfBrowser\obj\Debug\net8.0-windows\QuickSurfBrowser.AssemblyInfo.cs
 C:\Project\QuickSurfBrowser\obj\Debug\net8.0-windows\QuickSurfBrowser.csproj.CoreCompileInputs.cache
+C:\Project\QuickSurfBrowser\obj\Debug\net8.0-windows\QuickSurfBrowser.sourcelink.json
 C:\Project\QuickSurfBrowser\obj\Debug\net8.0-windows\QuickSur.E422F7AA.Up2Date
 C:\Project\QuickSurfBrowser\obj\Debug\net8.0-windows\QuickSurfBrowser.dll
 C:\Project\QuickSurfBrowser\obj\Debug\net8.0-windows\refint\QuickSurfBrowser.dll
 C:\Project\QuickSurfBrowser\obj\Debug\net8.0-windows\QuickSurfBrowser.pdb
 C:\Project\QuickSurfBrowser\obj\Debug\net8.0-windows\QuickSurfBrowser.genruntimeconfig.cache
 C:\Project\QuickSurfBrowser\obj\Debug\net8.0-windows\ref\QuickSurfBrowser.dll
-C:\Project\QuickSurfBrowser\obj\Debug\net8.0-windows\QuickSurfBrowser.sourcelink.json

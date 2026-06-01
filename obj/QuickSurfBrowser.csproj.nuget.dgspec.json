@@ -45,7 +45,7 @@
           "dependencies": {
             "Microsoft.Web.WebView2": {
               "target": "Package",
-              "version": "[1.0.3967.48, )"
+              "version": "[1.0.2792.45, )"
             }
           },
           "imports": [
