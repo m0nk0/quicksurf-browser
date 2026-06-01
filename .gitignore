@@ -4,17 +4,27 @@ obj/
 *.dll
 *.exe
 *.pdb
+*.xml
+*.nuspec
+*.nupkg
 
-# Пользовательские данные
-*.json
+# Пользовательские данные и кэш
+WebViewProfile/
+AIProfile/
 AppData/
+*.log
+*.tmp
 
-# VS / Rider
+# VS / Rider / IDE
 .vs/
 *.suo
 *.user
 *.userosscache
 *.sln.docstates
+*.csproj.user
+.idea/
+*.swp
+*.swo
 
 # System files
 .DS_Store
