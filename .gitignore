@@ -1,0 +1,21 @@
+# Сборка
+bin/
+obj/
+*.dll
+*.exe
+*.pdb
+
+# Пользовательские данные
+*.json
+AppData/
+
+# VS / Rider
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# System files
+.DS_Store
+Thumbs.db
