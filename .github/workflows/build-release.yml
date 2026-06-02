@@ -12,6 +12,8 @@ env:
   PROJECT_NAME: QuickSurfBrowser
   PROJECT_FILE: QuickSurfBrowser.csproj
   DOTNET_VERSION: '8.0.x'
+  # ✅ Обходной путь: вычисляем наличие секрета здесь
+  HAS_CERT: ${{ secrets.SIGNING_CERT_PFX != '' }}
 
 jobs:
   build:
@@ -58,8 +60,8 @@ jobs:
           -o ./publish/lite
 
     - name: 🔐 Sign FULL version
-      # ✅ ИСПРАВЛЕНИЕ: Простая проверка существования секрета (без != '')
-      if: ${{ secrets.SIGNING_CERT_PFX }}
+      # ✅ Проверяем переменную env вместо прямого обращения к secrets
+      if: ${{ env.HAS_CERT == 'true' }}
       run: |
         # Надежная распаковка Base64 в файл .pfx через PowerShell
         $base64 = "${{ secrets.SIGNING_CERT_PFX }}"
