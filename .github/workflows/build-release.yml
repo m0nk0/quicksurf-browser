@@ -63,8 +63,8 @@ jobs:
           -p:DebugSymbols=false `
           -o ./publish/lite
 
-    - name: 🔐 Sign FULL version (if cert provided)
-      if: ${{ secrets.SIGNING_CERT_PFX != '' }}
+       - name: 🔐 Sign FULL version (if cert provided)
+      if: ${{ secrets.SIGNING_CERT_PFX != 0 }}
       run: |
         # Конвертируем base64-сертификат из секрета в файл .pfx
         echo "${{ secrets.SIGNING_CERT_PFX }}" | base64 -d > signing-cert.pfx
