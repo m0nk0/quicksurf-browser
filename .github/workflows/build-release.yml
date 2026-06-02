@@ -12,7 +12,7 @@ env:
   PROJECT_NAME: QuickSurfBrowser
   PROJECT_FILE: QuickSurfBrowser.csproj
   DOTNET_VERSION: '8.0.x'
-  # ✅ Обходной путь: вычисляем наличие секрета здесь
+  # Обходной путь для проверки секрета
   HAS_CERT: ${{ secrets.SIGNING_CERT_PFX != '' }}
 
 jobs:
@@ -54,25 +54,21 @@ jobs:
           -r win-x64 `
           --self-contained false `
           -p:PublishSingleFile=true `
-          -p:EnableCompressionInSingleFile=true `
+          # ✅ УБРАНО: -p:EnableCompressionInSingleFile=true (запрещено для non-self-contained)
           -p:DebugType=None `
           -p:DebugSymbols=false `
           -o ./publish/lite
 
     - name: 🔐 Sign FULL version
-      # ✅ Проверяем переменную env вместо прямого обращения к secrets
       if: ${{ env.HAS_CERT == 'true' }}
       run: |
-        # Надежная распаковка Base64 в файл .pfx через PowerShell
         $base64 = "${{ secrets.SIGNING_CERT_PFX }}"
         $bytes = [System.Convert]::FromBase64String($base64)
         [System.IO.File]::WriteAllBytes(".\signing-cert.pfx", $bytes)
         
-        # Подписываем файл
         $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2(".\signing-cert.pfx", "${{ secrets.SIGNING_CERT_PASSWORD }}")
         Set-AuthenticodeSignature -FilePath "./publish/full/${{ env.PROJECT_NAME }}.exe" -Certificate $cert -TimestampServer "http://timestamp.digicert.com"
         
-        # Переименовываем с суффиксом
         Rename-Item "./publish/full/${{ env.PROJECT_NAME }}.exe" "${{ env.PROJECT_NAME }}-v${{ github.ref_name }}-Full.exe"
       shell: pwsh
 
