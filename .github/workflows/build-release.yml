@@ -46,17 +46,6 @@ jobs:
           -p:DebugSymbols=false `
           -o ./publish/full
 
-    - name: 📦 Publish LITE version (~9 MB, framework-dependent)
-      run: |
-        dotnet publish ${{ env.PROJECT_FILE }} `
-          -c Release `
-          -r win-x64 `
-          --self-contained false `
-          -p:PublishSingleFile=true `
-          -p:DebugType=None `
-          -p:DebugSymbols=false `
-          -o ./publish/lite
-
     - name: 🔐 Sign FULL version
       if: ${{ env.HAS_CERT == 'true' }}
       run: |
@@ -68,11 +57,6 @@ jobs:
         Set-AuthenticodeSignature -FilePath "./publish/full/${{ env.PROJECT_NAME }}.exe" -Certificate $cert -TimestampServer "http://timestamp.digicert.com"
         
         Rename-Item "./publish/full/${{ env.PROJECT_NAME }}.exe" "${{ env.PROJECT_NAME }}-v${{ github.ref_name }}-Full.exe"
-      shell: pwsh
-
-    - name: 🏷️ Rename LITE version
-      run: |
-        Rename-Item "./publish/lite/${{ env.PROJECT_NAME }}.exe" "${{ env.PROJECT_NAME }}-v${{ github.ref_name }}-Lite.exe"
       shell: pwsh
 
     - name: 📤 Upload artifacts
@@ -102,7 +86,7 @@ jobs:
       with:
         files: |
           ./artifacts/*-Full.exe
-          ./artifacts/*-Lite.exe
+          
         name: "Release ${{ github.ref_name }}"
         body: |
           ## 🎉 QuickSurf Browser ${{ github.ref_name }}
