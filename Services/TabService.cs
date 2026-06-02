@@ -1,78 +1,98 @@
 using System;
-using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
-using System.Windows.Controls;
-using System.Windows.Media;
+using QuickSurfBrowser.Models;
 
 namespace QuickSurfBrowser.Services
 {
     public class TabService
     {
-        private readonly TabControl _tabsControl;
-        private readonly List<TabItem> _tabs = new();
-        private readonly List<string> _urls = new();
+        private readonly ObservableCollection<TabItemModel> _tabs;
         private int _counter = 1;
 
-        // Событие, когда вкладка переключилась
         public event EventHandler<int> TabSwitched = null!;
+        public event EventHandler<TabItemModel> TabClosed = null!;
 
-        public TabService(TabControl tabsControl)
+        public ReadOnlyObservableCollection<TabItemModel> Tabs { get; }
+        public int Count => _tabs.Count;
+        public TabItemModel? SelectedTab => _tabs.FirstOrDefault(t => t.IsSelected);
+        public int SelectedIndex => _tabs.IndexOf(SelectedTab!);
+
+        public TabService(ObservableCollection<TabItemModel> tabs)
         {
-            _tabsControl = tabsControl;
-            _tabsControl.SelectionChanged += (s, e) =>
-            {
-                if (_tabsControl.SelectedIndex >= 0)
-                    TabSwitched?.Invoke(this, _tabsControl.SelectedIndex);
-            };
+            _tabs = tabs;
+            Tabs = new ReadOnlyObservableCollection<TabItemModel>(_tabs);
         }
 
-        public int Count => _tabs.Count;
-        public string GetCurrentUrl() => _urls[_tabsControl.SelectedIndex];
-        
+        public string GetCurrentUrl()
+        {
+            return SelectedTab?.Url ?? "";
+        }
+
         public void SetCurrentUrl(string url)
         {
-            if (_tabsControl.SelectedIndex >= 0)
-                _urls[_tabsControl.SelectedIndex] = url;
+            if (SelectedTab != null)
+                SelectedTab.Url = url;
+        }
+
+        public void SetCurrentTitle(string title)
+        {
+            if (SelectedTab != null)
+                SelectedTab.Title = title;
         }
 
         public void CreateNewTab(string title = "Новая вкладка")
         {
-            var tab = new TabItem();
-            var header = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal };
+            var tab = new TabItemModel(_counter++, title);
             
-            var text = new TextBlock { Text = title, VerticalAlignment = System.Windows.VerticalAlignment.Center, Margin = new System.Windows.Thickness(0, 0, 10, 0) };
-            var closeBtn = new System.Windows.Controls.Button 
-            { 
-                Content = "✕", Width = 18, Height = 18, Background = null, 
-                BorderThickness = new System.Windows.Thickness(0), Foreground = Brushes.Gray, Cursor = System.Windows.Input.Cursors.Hand 
-            };
+            // Снимаем выделение со всех остальных
+            foreach (var t in _tabs)
+                t.IsSelected = false;
             
-            closeBtn.Click += (s, e) => CloseTab(tab);
-            
-            header.Children.Add(text);
-            header.Children.Add(closeBtn);
-            tab.Header = header;
-
+            tab.IsSelected = true;
             _tabs.Add(tab);
-            _urls.Add(""); // Пустой URL для новой
-            _tabsControl.Items.Add(tab);
-            _tabsControl.SelectedIndex = _tabsControl.Items.Count - 1;
-            _counter++;
+            
+            TabSwitched?.Invoke(this, _tabs.Count - 1);
         }
 
-        private void CloseTab(TabItem tabToClose)
+        public void SelectTab(TabItemModel tab)
         {
+            if (tab == null || tab == SelectedTab) return;
+            
+            foreach (var t in _tabs)
+                t.IsSelected = false;
+            
+            tab.IsSelected = true;
+            TabSwitched?.Invoke(this, _tabs.IndexOf(tab));
+        }
+
+        public void SelectTabByIndex(int index)
+        {
+            if (index >= 0 && index < _tabs.Count)
+                SelectTab(_tabs[index]);
+        }
+
+        public void CloseTab(TabItemModel tabToClose)
+        {
+            if (tabToClose == null) return;
+            
             int idx = _tabs.IndexOf(tabToClose);
             if (idx < 0) return;
 
+            bool wasSelected = tabToClose.IsSelected;
             _tabs.RemoveAt(idx);
-            _urls.RemoveAt(idx);
-            _tabsControl.Items.Remove(tabToClose);
+            TabClosed?.Invoke(this, tabToClose);
 
             if (_tabs.Count == 0)
+            {
                 CreateNewTab("Старт");
-            else if (_tabsControl.SelectedItem == tabToClose)
-                _tabsControl.SelectedIndex = Math.Min(idx, _tabs.Count - 1);
+            }
+            else if (wasSelected)
+            {
+                // Выбираем соседнюю вкладку
+                int newIndex = Math.Min(idx, _tabs.Count - 1);
+                SelectTab(_tabs[newIndex]);
+            }
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -8,6 +9,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using QuickSurfBrowser.Models;
 using QuickSurfBrowser.Services;
 
 #nullable disable
@@ -23,6 +25,9 @@ namespace QuickSurfBrowser
         private readonly ChatContextService _chatContext;
         private AiWorkerService _aiWorker;
         private readonly string _dataPath;
+        private readonly ObservableCollection<TabItemModel> _tabsCollection = new();
+
+        public ObservableCollection<TabItemModel> TabsCollection => _tabsCollection;
 
         public MainWindow()
         {
@@ -33,11 +38,10 @@ namespace QuickSurfBrowser
 
             _history = new HistoryService(_dataPath);
             _tiles = new TilesService(_dataPath);
-            _tabs = new TabService(TabsControl);
+            _tabs = new TabService(_tabsCollection);
             _browser = new BrowserService(WebView, OnNavigationCompleted);
             _chatContext = new ChatContextService(_dataPath);
             
-            // Инициализация AI-воркера (скрытый WebView2)
             _aiWorker = new AiWorkerService(AiWorkerView, _dataPath);
 
             _tabs.TabSwitched += OnTabSwitched;
@@ -54,7 +58,6 @@ namespace QuickSurfBrowser
             SetupAITiles();
             UpdateContextStatus();
 
-            // Асинхронная инициализация браузеров в фоне
             _ = _browser.InitializeAsync();
             _ = _aiWorker.InitializeAsync();
 
@@ -66,27 +69,43 @@ namespace QuickSurfBrowser
 
         private void OnNavigationCompleted(string url, string title)
         {
-            var idx = TabsControl.SelectedIndex;
-            if (idx >= 0 && idx < _tabs.Count)
+            if (_tabs.SelectedTab != null)
             {
-                var tabItem = TabsControl.Items[idx] as TabItem;
-                if (tabItem?.Header is StackPanel sp && sp.Children[0] is TextBlock tb)
-                    tb.Text = title;
+                _tabs.SetCurrentUrl(url);
+                if (!string.IsNullOrWhiteSpace(title))
+                    _tabs.SetCurrentTitle(title);
             }
-            _tabs.SetCurrentUrl(url);
             _history.Add(url, title);
         }
 
         private void OnTabSwitched(object sender, int index)
         {
-            if (index >= 0 && index < _tabs.Count)
+            if (_tabs.SelectedTab != null)
+            {
                 UrlBox.Text = _tabs.GetCurrentUrl();
+                
+                if (_tabs.SelectedTab.Title == "Старт" && string.IsNullOrEmpty(_tabs.SelectedTab.Url))
+                    ShowStartPage();
+                else
+                    ShowBrowser();
+            }
         }
 
-        private void TabsControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        // === ОБРАБОТЧИКИ ВКЛАДОК ===
+
+        private void Tab_Click(object sender, MouseButtonEventArgs e)
         {
-            if (TabsControl.SelectedIndex >= 0 && TabsControl.SelectedIndex < _tabs.Count)
-                UrlBox.Text = _tabs.GetCurrentUrl();
+            if (sender is Border border && border.Tag is TabItemModel tab)
+                _tabs.SelectTab(tab);
+        }
+
+        private void Tab_CloseClick(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is TabItemModel tab)
+            {
+                e.Handled = true;
+                _tabs.CloseTab(tab);
+            }
         }
 
         // === КНОПКИ НАВИГАЦИИ ===
@@ -95,15 +114,87 @@ namespace QuickSurfBrowser
         private void BtnForward_Click(object s, RoutedEventArgs e) => _browser.GoForward();
         private void BtnRefresh_Click(object s, RoutedEventArgs e) => _browser.Refresh();
         private void BtnGo_Click(object s, RoutedEventArgs e) => Navigate(UrlBox.Text);
-        private void BtnNewTab_Click(object s, RoutedEventArgs e) { _tabs.CreateNewTab("Новая вкладка"); ShowBrowser(); }
         private void UrlBox_KeyDown(object s, KeyEventArgs e) { if (e.Key == Key.Enter) Navigate(UrlBox.Text); }
+
+        private void UrlBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            var textBox = sender as TextBox;
+            if (textBox != null && !textBox.IsKeyboardFocused)
+            {
+                textBox.Focus();
+                textBox.SelectAll();
+                e.Handled = true;
+            }
+            else if (textBox != null)
+            {
+                textBox.SelectAll();
+                e.Handled = true;
+            }
+        }
+
+        private void UrlBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            UrlBox.SelectAll();
+        }
+
+        private void BtnCreateTab_Click(object s, RoutedEventArgs e)
+        {
+            _tabs.CreateNewTab("Новая вкладка");
+            ShowBrowser();
+        }
+
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            base.OnKeyDown(e);
+
+            if (e.Key == Key.T && Keyboard.Modifiers == ModifierKeys.Control)
+            {
+                BtnCreateTab_Click(this, e);
+                e.Handled = true;
+            }
+            else if (e.Key == Key.W && Keyboard.Modifiers == ModifierKeys.Control)
+            {
+                if (_tabs.SelectedTab != null)
+                    _tabs.CloseTab(_tabs.SelectedTab);
+                e.Handled = true;
+            }
+            else if (e.Key == Key.L && Keyboard.Modifiers == ModifierKeys.Control)
+            {
+                UrlBox.Focus();
+                UrlBox.SelectAll();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Tab && Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift))
+            {
+                if (_tabs.Count > 0)
+                {
+                    int prevIndex = (_tabs.SelectedIndex - 1 + _tabs.Count) % _tabs.Count;
+                    _tabs.SelectTabByIndex(prevIndex);
+                }
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Tab && Keyboard.Modifiers == ModifierKeys.Control)
+            {
+                if (_tabs.Count > 0)
+                {
+                    int nextIndex = (_tabs.SelectedIndex + 1) % _tabs.Count;
+                    _tabs.SelectTabByIndex(nextIndex);
+                }
+                e.Handled = true;
+            }
+        }
 
         private void Navigate(string input)
         {
             ShowBrowser();
-            input = input.Trim(); if (string.IsNullOrEmpty(input)) return;
-            string url = input.Contains(".") && !input.Contains(" ") ? (input.StartsWith("http") ? input : $"https://{input}") : $"https://www.google.com/search?q={Uri.EscapeDataString(input)}";
-            UrlBox.Text = url; _browser.Navigate(url);
+            input = input.Trim(); 
+            if (string.IsNullOrEmpty(input)) return;
+            string url = input.Contains(".") && !input.Contains(" ") 
+                ? (input.StartsWith("http") ? input : $"https://{input}") 
+                : $"https://www.google.com/search?q={Uri.EscapeDataString(input)}";
+            UrlBox.Text = url;
+            _browser.Navigate(url);
+            _tabs.SetCurrentUrl(url);
         }
 
         // === СТАРТОВАЯ СТРАНИЦА ===
@@ -134,31 +225,86 @@ namespace QuickSurfBrowser
         {
             if (RootGrid.ColumnDefinitions.Count > 1)
             {
-                RootGrid.ColumnDefinitions[1].Width = (AISidebar.Visibility == Visibility.Visible || HistoryPanel.Visibility == Visibility.Visible) 
-                    ? new GridLength(400) 
-                    : new GridLength(0);
+                RootGrid.ColumnDefinitions[1].Width = 
+                    (AISidebar.Visibility == Visibility.Visible || HistoryPanel.Visibility == Visibility.Visible) 
+                        ? new GridLength(400) 
+                        : new GridLength(0);
             }
         }
 
         private void BtnHome_Click(object sender, RoutedEventArgs e) => ShowStartPage();
 
-        private void RenderTiles()
-        {
-            TilesWrapPanel.Children.Clear();
-            foreach (var tile in _tiles.Tiles)
-                TilesWrapPanel.Children.Add(CreateTileControl(tile));
-        }
+        // === ПЛИТКИ ===
 
-        private Border CreateTileControl(Tile tile)
+        private void RenderTiles()
+{
+    // ✅ Очищаем панель избранного
+    TilesWrapPanel.Children.Clear();
+    
+    // ✅ Только пользовательские плитки (Гисметео удалён)
+    foreach (var tile in _tiles.Tiles)
+        TilesWrapPanel.Children.Add(CreateTile(tile.Title, tile.Url, canDelete: true));
+}
+
+        // ✅ Универсальный метод создания карточки 80x80
+        private Border CreateTile(string title, string url, bool canDelete)
         {
-            var border = new Border { Width = 140, Height = 64, Margin = new Thickness(8), Background = Brushes.White, CornerRadius = new CornerRadius(8), Cursor = Cursors.Hand, ToolTip = tile.Url, SnapsToDevicePixels = true };
-            var stack = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-            var img = new Image { Width = 28, Height = 28, Margin = new Thickness(0, 0, 8, 0) };
-            try { img.Source = new BitmapImage(new Uri($"https://www.google.com/s2/favicons?domain={new Uri(tile.Url).Host}&sz=64")); } catch { }
-            var text = new TextBlock { Text = tile.Title, TextAlignment = TextAlignment.Left, FontSize = 12, FontWeight = FontWeights.Medium, VerticalAlignment = VerticalAlignment.Center, MaxWidth = 95 };
-            stack.Children.Add(img); stack.Children.Add(text); border.Child = stack;
-            border.MouseLeftButtonUp += (s, e) => { ShowBrowser(); Navigate(tile.Url); };
-            border.MouseRightButtonUp += (s, e) => { if (MessageBox.Show($"Удалить \"{tile.Title}\"?", "Подтверждение", MessageBoxButton.YesNo) == MessageBoxResult.Yes) { _tiles.RemoveTile(tile); RenderTiles(); } };
+            var border = new Border 
+            { 
+                Width = 80, 
+                Height = 80, 
+                Margin = new Thickness(5), 
+                Background = Brushes.White, 
+                BorderBrush = (Brush)FindResource("BorderBrush"),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(12), 
+                Cursor = Cursors.Hand, 
+                ToolTip = url, 
+                SnapsToDevicePixels = true 
+            };
+            
+            var stack = new StackPanel 
+            { 
+                Orientation = Orientation.Vertical,
+                HorizontalAlignment = HorizontalAlignment.Center, 
+                VerticalAlignment = VerticalAlignment.Center 
+            };
+            
+            var img = new Image { Width = 32, Height = 32, Margin = new Thickness(0, 0, 0, 4) };
+            try { img.Source = new BitmapImage(new Uri($"https://www.google.com/s2/favicons?domain={new Uri(url).Host}&sz=64")); } catch { }
+            
+            var text = new TextBlock 
+            { 
+                Text = title, 
+                TextAlignment = TextAlignment.Center, 
+                FontSize = 10, 
+                FontWeight = FontWeights.Medium 
+            };
+            
+            stack.Children.Add(img); 
+            stack.Children.Add(text); 
+            border.Child = stack;
+            
+            // Клик — открыть сайт
+            border.MouseLeftButtonUp += (s, e) => { ShowBrowser(); Navigate(url); };
+            
+            // Правый клик — удалить (только для пользовательских)
+            if (canDelete)
+            {
+                border.MouseRightButtonUp += (s, e) => 
+                { 
+                    if (MessageBox.Show($"Удалить \"{title}\"?", "Подтверждение", MessageBoxButton.YesNo) == MessageBoxResult.Yes) 
+                    { 
+                        var tileToRemove = _tiles.Tiles.FirstOrDefault(t => t.Url == url);
+                        if (tileToRemove != null)
+                        {
+                            _tiles.RemoveTile(tileToRemove);
+                            RenderTiles();
+                        }
+                    } 
+                };
+            }
+            
             return border;
         }
 
@@ -178,69 +324,128 @@ namespace QuickSurfBrowser
 
         private void BtnToggleHistory_Click(object sender, RoutedEventArgs e)
         {
-            if (HistoryPanel.Visibility == Visibility.Visible) HistoryPanel.Visibility = Visibility.Collapsed;
-            else { AISidebar.Visibility = Visibility.Collapsed; HistoryPanel.Visibility = Visibility.Visible; RefreshHistoryList(); }
+            if (HistoryPanel.Visibility == Visibility.Visible) 
+            { 
+                HistoryPanel.Visibility = Visibility.Collapsed; 
+            }
+            else 
+            { 
+                AISidebar.Visibility = Visibility.Collapsed; 
+                HistoryPanel.Visibility = Visibility.Visible; 
+                RefreshHistoryList(); 
+            }
             UpdateSidebarWidth();
         }
 
-        private void BtnCloseHistory_Click(object s, RoutedEventArgs e) { HistoryPanel.Visibility = Visibility.Collapsed; UpdateSidebarWidth(); }
+        private void BtnCloseHistory_Click(object s, RoutedEventArgs e) 
+        { 
+            HistoryPanel.Visibility = Visibility.Collapsed; 
+            UpdateSidebarWidth(); 
+        }
+
         private void RefreshHistoryList() => HistoryList.ItemsSource = _history.Search(HistorySearchBox?.Text ?? "");
         private void HistorySearchBox_TextChanged(object sender, TextChangedEventArgs e) => RefreshHistoryList();
-        private void BtnClearHistory_Click(object sender, RoutedEventArgs e) { if (MessageBox.Show("Очистить историю?", "Подтверждение", MessageBoxButton.YesNo) == MessageBoxResult.Yes) { _history.Clear(); RefreshHistoryList(); } }
-        private void HistoryList_MouseDoubleClick(object sender, MouseButtonEventArgs e) { if (HistoryList.SelectedItem is HistoryItem item) { Navigate(item.Url); HistoryPanel.Visibility = Visibility.Collapsed; UpdateSidebarWidth(); } }
+        
+        private void BtnClearHistory_Click(object sender, RoutedEventArgs e) 
+        { 
+            if (MessageBox.Show("Очистить историю?", "Подтверждение", MessageBoxButton.YesNo) == MessageBoxResult.Yes) 
+            { 
+                _history.Clear(); 
+                RefreshHistoryList(); 
+            } 
+        }
+
+        private void HistoryList_MouseDoubleClick(object sender, MouseButtonEventArgs e) 
+        { 
+            if (HistoryList.SelectedItem is HistoryItem item) 
+            { 
+                Navigate(item.Url); 
+                HistoryPanel.Visibility = Visibility.Collapsed; 
+                UpdateSidebarWidth(); 
+            } 
+        }
 
         // === AI САЙДБАР & ЧАТ ===
 
         private void BtnToggleAI_Click(object s, RoutedEventArgs e)
         {
-            if (AISidebar.Visibility == Visibility.Visible) AISidebar.Visibility = Visibility.Collapsed;
-            else { HistoryPanel.Visibility = Visibility.Collapsed; AISidebar.Visibility = Visibility.Visible; ChatInput.Focus(); }
+            if (AISidebar.Visibility == Visibility.Visible) 
+                AISidebar.Visibility = Visibility.Collapsed;
+            else 
+            { 
+                HistoryPanel.Visibility = Visibility.Collapsed; 
+                AISidebar.Visibility = Visibility.Visible; 
+                ChatInput.Focus(); 
+            }
             UpdateSidebarWidth();
         }
 
-        private void BtnCloseSidebar_Click(object s, RoutedEventArgs e) { AISidebar.Visibility = Visibility.Collapsed; UpdateSidebarWidth(); }
+        private void BtnCloseSidebar_Click(object s, RoutedEventArgs e) 
+        { 
+            AISidebar.Visibility = Visibility.Collapsed; 
+            UpdateSidebarWidth(); 
+        }
         
         private async void BtnSendChat_Click(object s, RoutedEventArgs e) => await SendRealChat();
-        private async void ChatInput_KeyDown(object s, KeyEventArgs e) { if (e.Key == Key.Enter) await SendRealChat(); }
+        
+        private async void ChatInput_KeyDown(object s, KeyEventArgs e) 
+        { 
+            if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.Control) 
+                await SendRealChat(); 
+        }
 
         private async Task SendRealChat()
-{
-    var msg = ChatInput.Text.Trim();
-    if (string.IsNullOrEmpty(msg)) return;
+        {
+            var msg = ChatInput.Text.Trim();
+            if (string.IsNullOrEmpty(msg)) return;
 
-    AddChatBubble(msg, true);
-    _chatContext.AddMessage("user", msg);
-    ChatInput.Text = "";
-    var loading = AddChatBubble("Думаю...", false, true);
-    UpdateContextStatus();
+            AddChatBubble(msg, true);
+            _chatContext.AddMessage("user", msg);
+            ChatInput.Text = "";
+            var loading = AddChatBubble("Думаю...", false, true);
+            UpdateContextStatus();
 
-    try
-    {
-        // Работаем только с Алисой
-        var response = await _aiWorker.AskAsync(msg);
-        
-        ChatMessages.Children.Remove(loading);
-        AddChatBubble(response, false);
-        _chatContext.AddMessage("assistant", response);
-        UpdateContextStatus();
-    }
-    catch (Exception ex)
-    {
-        ChatMessages.Children.Remove(loading);
-        AddChatBubble($"⚠️ {ex.Message}\n\n💡 Убедитесь, что вы вошли в Яндекс в основной вкладке.", false);
-    }
-}
+            try
+            {
+                var response = await _aiWorker.AskAsync(msg);
+                ChatMessages.Children.Remove(loading);
+                AddChatBubble(response, false);
+                _chatContext.AddMessage("assistant", response);
+                UpdateContextStatus();
+            }
+            catch (Exception ex)
+            {
+                ChatMessages.Children.Remove(loading);
+                AddChatBubble($"⚠️ {ex.Message}\n\n💡 Убедитесь, что вы вошли в Яндекс в основной вкладке.", false);
+            }
+        }
+
         private Border AddChatBubble(string text, bool isUser, bool isLoading = false)
-{
-    var container = new Border { Margin = new Thickness(0, 0, 0, 15), HorizontalAlignment = isUser ? HorizontalAlignment.Right : HorizontalAlignment.Left };
-    var bubble = new Border { Background = isUser ? (Brush)FindResource("PrimaryBrush") : Brushes.White, CornerRadius = new CornerRadius(12), Padding = new Thickness(12, 10, 12, 10), MaxWidth = 320 };
-    var tb = new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap, Foreground = isUser ? Brushes.White : (Brush)FindResource("TextBrush") };
-    bubble.Child = tb; 
-    container.Child = bubble; 
-    ChatMessages.Children.Add(container); 
-    ChatScrollViewer.ScrollToEnd(); // ✅ Прокрутка вниз после каждого сообщения
-    return container;
-}
+        {
+            var container = new Border 
+            { 
+                Margin = new Thickness(0, 0, 0, 15), 
+                HorizontalAlignment = isUser ? HorizontalAlignment.Right : HorizontalAlignment.Left 
+            };
+            var bubble = new Border 
+            { 
+                Background = isUser ? (Brush)FindResource("PrimaryBrush") : Brushes.White, 
+                CornerRadius = new CornerRadius(12), 
+                Padding = new Thickness(12, 10, 12, 10), 
+                MaxWidth = 320 
+            };
+            var tb = new TextBlock 
+            { 
+                Text = text, 
+                TextWrapping = TextWrapping.Wrap, 
+                Foreground = isUser ? Brushes.White : (Brush)FindResource("TextBrush") 
+            };
+            bubble.Child = tb; 
+            container.Child = bubble; 
+            ChatMessages.Children.Add(container); 
+            ChatScrollViewer.ScrollToEnd();
+            return container;
+        }
 
         // === УПРАВЛЕНИЕ КОНТЕКСТОМ ===
 
@@ -253,14 +458,14 @@ namespace QuickSurfBrowser
         }
 
         private void BtnClearContext_Click(object s, RoutedEventArgs e)
-{
-    if (MessageBox.Show("Очистить историю диалога?", "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
-    {
-        _chatContext.Clear();
-        ChatMessages.Children.Clear(); // ✅ Очищаем визуальный чат
-        UpdateContextStatus();
-    }
-}
+        {
+            if (MessageBox.Show("Очистить историю диалога?", "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+            {
+                _chatContext.Clear();
+                ChatMessages.Children.Clear();
+                UpdateContextStatus();
+            }
+        }
 
         private void UpdateContextStatus()
         {
@@ -276,17 +481,39 @@ namespace QuickSurfBrowser
         private void CtxCopy_Click(object s, RoutedEventArgs e) => WebView.CoreWebView2?.ExecuteScriptAsync("document.execCommand('copy')");
         private void CtxSearch_Click(object s, RoutedEventArgs e) => Navigate("https://www.google.com/search");
 
-        private async void CtxAITranslate_Click(object s, RoutedEventArgs e) { var t = await WebView.CoreWebView2.ExecuteScriptAsync("window.getSelection().toString()"); if (!string.IsNullOrWhiteSpace(t)) OpenAISidebar($"Переведи: {t}"); }
-        private async void CtxAIExplain_Click(object s, RoutedEventArgs e) { var t = await WebView.CoreWebView2.ExecuteScriptAsync("window.getSelection().toString()"); if (!string.IsNullOrWhiteSpace(t)) OpenAISidebar($"Объясни: {t}"); }
-        private void CtxAISummarize_Click(object s, RoutedEventArgs e) { OpenAISidebar($"Краткое содержание: {WebView.CoreWebView2.DocumentTitle}"); }
-        private async void CtxAICheckCode_Click(object s, RoutedEventArgs e) { var t = await WebView.CoreWebView2.ExecuteScriptAsync("window.getSelection().toString()"); if (!string.IsNullOrWhiteSpace(t)) OpenAISidebar($"Найди ошибки в коде: {t}"); }
+        private async void CtxAITranslate_Click(object s, RoutedEventArgs e) 
+        { 
+            var t = await WebView.CoreWebView2.ExecuteScriptAsync("window.getSelection().toString()"); 
+            if (!string.IsNullOrWhiteSpace(t)) OpenAISidebar($"Переведи: {t}"); 
+        }
+
+        private async void CtxAIExplain_Click(object s, RoutedEventArgs e) 
+        { 
+            var t = await WebView.CoreWebView2.ExecuteScriptAsync("window.getSelection().toString()"); 
+            if (!string.IsNullOrWhiteSpace(t)) OpenAISidebar($"Объясни: {t}"); 
+        }
+
+        private void CtxAISummarize_Click(object s, RoutedEventArgs e) 
+        { 
+            OpenAISidebar($"Краткое содержание: {WebView.CoreWebView2.DocumentTitle}"); 
+        }
+
+        private async void CtxAICheckCode_Click(object s, RoutedEventArgs e) 
+        { 
+            var t = await WebView.CoreWebView2.ExecuteScriptAsync("window.getSelection().toString()"); 
+            if (!string.IsNullOrWhiteSpace(t)) OpenAISidebar($"Найди ошибки в коде: {t}"); 
+        }
 
         private void OpenAISidebar(string prompt = null) 
         { 
             AISidebar.Visibility = Visibility.Visible; 
             HistoryPanel.Visibility = Visibility.Collapsed; 
             UpdateSidebarWidth();
-            if (!string.IsNullOrWhiteSpace(prompt)) { ChatInput.Text = prompt; ChatInput.Focus(); } 
+            if (!string.IsNullOrWhiteSpace(prompt)) 
+            { 
+                ChatInput.Text = prompt; 
+                ChatInput.Focus(); 
+            } 
         }
 
         // === ПОИСК НА СТАРТОВОЙ ===
@@ -301,7 +528,7 @@ namespace QuickSurfBrowser
             var query = SearchBox.Text.Trim();
             if (string.IsNullOrWhiteSpace(query) || query == "Введите запрос...") return;
 
-            var selected = (SearchEngineComboBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? " Google";
+            var selected = (SearchEngineComboBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "🔍 Google";
             string engine = selected.Split(' ').Last();
 
             string url = engine switch
@@ -320,14 +547,30 @@ namespace QuickSurfBrowser
 
         // === УПРАВЛЕНИЕ ПЛИТКАМИ (ФОРМА) ===
 
-        private void BtnAddTile_Click(object sender, RoutedEventArgs e) { AddTileForm.Visibility = Visibility.Visible; NewTileTitle.Focus(); }
+        private void BtnAddTile_Click(object sender, RoutedEventArgs e) 
+        { 
+            AddTileForm.Visibility = Visibility.Visible; 
+            NewTileTitle.Focus(); 
+        }
+
         private void BtnConfirmAddTile_Click(object sender, RoutedEventArgs e)
         {
-            var title = NewTileTitle.Text.Trim(); var url = NewTileUrl.Text.Trim();
-            if (!string.IsNullOrEmpty(title) && !string.IsNullOrEmpty(url)) { _tiles.AddTile(title, url); RenderTiles(); }
-            AddTileForm.Visibility = Visibility.Collapsed; NewTileTitle.Text = ""; NewTileUrl.Text = "";
+            var title = NewTileTitle.Text.Trim(); 
+            var url = NewTileUrl.Text.Trim();
+            if (!string.IsNullOrEmpty(title) && !string.IsNullOrEmpty(url)) 
+            { 
+                _tiles.AddTile(title, url); 
+                RenderTiles(); 
+            }
+            AddTileForm.Visibility = Visibility.Collapsed; 
+            NewTileTitle.Text = ""; 
+            NewTileUrl.Text = "";
         }
-        private void BtnCancelAddTile_Click(object sender, RoutedEventArgs e) { AddTileForm.Visibility = Visibility.Collapsed; }
+
+        private void BtnCancelAddTile_Click(object sender, RoutedEventArgs e) 
+        { 
+            AddTileForm.Visibility = Visibility.Collapsed; 
+        }
 
         // === ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ===
 
