@@ -1,0 +1,130 @@
+name: 🚀 Build & Release
+
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch: # Позволяет запускать вручную
+
+env:
+  PROJECT_NAME: QuickSurfBrowser
+  SOLUTION_FILE: QuickSurfBrowser.sln
+  DOTNET_VERSION: '8.0.x'
+
+jobs:
+  build:
+    name: 🛠 Build & Publish
+    runs-on: windows-latest
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: ⚙️ Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: 📦 Restore dependencies
+      run: dotnet restore ${{ env.SOLUTION_FILE }}
+
+    - name: 🔨 Build Release
+      run: dotnet build ${{ env.SOLUTION_FILE }} -c Release --no-restore
+
+    - name: 🧪 Run Tests (если есть)
+      run: dotnet test ${{ env.SOLUTION_FILE }} -c Release --no-build --verbosity normal
+      if: ${{ hashFiles('**/*Tests/*.csproj') != '' }}
+
+    - name: 📦 Publish FULL version (~67 MB, self-contained)
+      run: |
+        dotnet publish ${{ env.SOLUTION_FILE }} `
+          -c Release `
+          -r win-x64 `
+          --self-contained true `
+          -p:PublishSingleFile=true `
+          -p:EnableCompressionInSingleFile=true `
+          -p:DebugType=None `
+          -p:DebugSymbols=false `
+          -o ./publish/full
+
+    - name: 📦 Publish LITE version (~9 MB, framework-dependent)
+      run: |
+        dotnet publish ${{ env.SOLUTION_FILE }} `
+          -c Release `
+          -r win-x64 `
+          --self-contained false `
+          -p:PublishSingleFile=true `
+          -p:EnableCompressionInSingleFile=true `
+          -p:DebugType=None `
+          -p:DebugSymbols=false `
+          -o ./publish/lite
+
+    - name: 🔐 Sign FULL version (if cert provided)
+      if: ${{ secrets.SIGNING_CERT_PFX != '' }}
+      run: |
+        # Конвертируем base64-сертификат из секрета в файл .pfx
+        echo "${{ secrets.SIGNING_CERT_PFX }}" | base64 -d > signing-cert.pfx
+        
+        # Подписываем через PowerShell
+        $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2(".\signing-cert.pfx", "${{ secrets.SIGNING_CERT_PASSWORD }}")
+        Set-AuthenticodeSignature -FilePath "./publish/full/${{ env.PROJECT_NAME }}.exe" -Certificate $cert -TimestampServer "http://timestamp.digicert.com"
+        
+        # Переименовываем с суффиксом
+        Rename-Item "./publish/full/${{ env.PROJECT_NAME }}.exe" "${{ env.PROJECT_NAME }}-v${{ github.ref_name }}-Full.exe"
+      shell: pwsh
+
+    - name: 🏷️ Rename LITE version
+      run: |
+        Rename-Item "./publish/lite/${{ env.PROJECT_NAME }}.exe" "${{ env.PROJECT_NAME }}-v${{ github.ref_name }}-Lite.exe"
+      shell: pwsh
+
+    - name: 📤 Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-files
+        path: |
+          publish/full/*.exe
+          publish/lite/*.exe
+        retention-days: 7
+
+  release:
+    name: 📦 Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') # Только для тегов вида v1.0.0
+    
+    steps:
+    - name: 📥 Download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: release-files
+        path: ./artifacts
+
+    - name: 🚀 Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          ./artifacts/*-Full.exe
+          ./artifacts/*-Lite.exe
+        name: "Release ${{ github.ref_name }}"
+        body: |
+          ## 🎉 QuickSurf Browser ${{ github.ref_name }}
+          
+          ### 📥 Скачать:
+          - **Full** (~67 MB): Включает .NET 8 Runtime. Запускается сразу.
+          - **Lite** (~9 MB): Требует установленный .NET 8 Desktop Runtime.
+          
+          ### ✨ Изменения:
+          - *(Добавьте список изменений здесь)*
+          
+          ### 🔧 Требования:
+          - Windows 10/11 (x64)
+          - Для Lite-версии: [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)
+        draft: true # Релиз создаётся как черновик — вы сможете отредактировать перед публикацией
+        prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
