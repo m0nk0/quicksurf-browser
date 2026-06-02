@@ -1,21 +1,38 @@
-# Сборка
+# ===========================================
+# === СБОРКА .NET И БИНАРНИКИ ===
+# ===========================================
 bin/
 obj/
+publish/
+dist/
+QuickSurf_Release/
 *.dll
 *.exe
 *.pdb
 *.xml
+*.deps.json
+*.runtimeconfig.json
+*.runtimeconfig.dev.json
 *.nuspec
 *.nupkg
 
-# Пользовательские данные и кэш
+# ===========================================
+# === КЭШ BROWSER (WebView2 / Edge) ===
+# ===========================================
+# Профиль пользователя и кэш
 WebViewProfile/
 AIProfile/
 AppData/
+EBWebView/
+Edge/
 *.log
 *.tmp
+*.cache
+*.crashpad
 
-# VS / Rider / IDE
+# ===========================================
+# === VS / RIDER / IDE ===
+# ===========================================
 .vs/
 *.suo
 *.user
@@ -25,7 +42,13 @@ AppData/
 .idea/
 *.swp
 *.swo
+*.sdf
+*.opensdf
+*.VC.db
+*.VC.vcxproj.user
 
-# System files
+# ===========================================
+# === SYSTEM FILES ===
+# ===========================================
 .DS_Store
 Thumbs.db
