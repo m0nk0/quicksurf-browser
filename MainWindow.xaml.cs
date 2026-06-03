@@ -56,6 +56,8 @@ namespace QuickSurfBrowser
 
             RenderTiles();
             SetupAITiles();
+            SetupModelTiles();
+            SetupMediaTiles();  // ✅ Обработчики для панели "AI Генераторы"
             UpdateContextStatus();
 
             _ = _browser.InitializeAsync();
@@ -237,16 +239,13 @@ namespace QuickSurfBrowser
         // === ПЛИТКИ ===
 
         private void RenderTiles()
-{
-    // ✅ Очищаем панель избранного
-    TilesWrapPanel.Children.Clear();
-    
-    // ✅ Только пользовательские плитки (Гисметео удалён)
-    foreach (var tile in _tiles.Tiles)
-        TilesWrapPanel.Children.Add(CreateTile(tile.Title, tile.Url, canDelete: true));
-}
+        {
+            TilesWrapPanel.Children.Clear();
+            
+            foreach (var tile in _tiles.Tiles)
+                TilesWrapPanel.Children.Add(CreateTile(tile.Title, tile.Url, canDelete: true));
+        }
 
-        // ✅ Универсальный метод создания карточки 80x80
         private Border CreateTile(string title, string url, bool canDelete)
         {
             var border = new Border 
@@ -285,10 +284,8 @@ namespace QuickSurfBrowser
             stack.Children.Add(text); 
             border.Child = stack;
             
-            // Клик — открыть сайт
             border.MouseLeftButtonUp += (s, e) => { ShowBrowser(); Navigate(url); };
             
-            // Правый клик — удалить (только для пользовательских)
             if (canDelete)
             {
                 border.MouseRightButtonUp += (s, e) => 
@@ -302,22 +299,112 @@ namespace QuickSurfBrowser
                             RenderTiles();
                         }
                     } 
+                    e.Handled = true;
                 };
             }
             
             return border;
         }
 
+        // ✅ Обработчики для плиток ИИ-помощников + удаление через ПКМ
         private void SetupAITiles()
         {
             foreach (var border in FindVisualChildren<Border>(StartPageContainer))
             {
-                if (border.Tag is string tagData && tagData.Contains("|"))
+                if (border.Tag is string tagData && tagData.Contains("|") && !tagData.StartsWith("model|") && !tagData.StartsWith("media|"))
                 {
                     var parts = tagData.Split('|');
-                    if (parts.Length == 2) border.MouseLeftButtonUp += (s, e) => { ShowBrowser(); Navigate(parts[1]); };
+                    if (parts.Length == 2)
+                    {
+                        string url = parts[1];
+                        border.MouseLeftButtonUp += (s, e) => { ShowBrowser(); Navigate(url); };
+                        
+                        // ✅ Удаление через ПКМ
+                        border.MouseRightButtonUp += (s, e) => 
+                        { 
+                            if (MessageBox.Show($"Скрыть \"{parts[0]}\"?\n(Вернётся при следующем запуске)", "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes) 
+                            { 
+                                border.Visibility = Visibility.Collapsed;
+                            } 
+                            e.Handled = true;
+                        };
+                    }
                 }
             }
+        }
+
+        // ✅ Обработчики для плиток панели "ИИ модели" + удаление через ПКМ
+        private void SetupModelTiles()
+        {
+            foreach (var border in FindVisualChildren<Border>(StartPageContainer))
+            {
+                if (border.Tag is string tagData && tagData.StartsWith("model|"))
+                {
+                    var parts = tagData.Split('|');
+                    if (parts.Length == 2)
+                    {
+                        string url = parts[1];
+                        border.MouseLeftButtonUp += (s, e) => { ShowBrowser(); Navigate(url); };
+                        
+                        // ✅ Удаление через ПКМ
+                        border.MouseRightButtonUp += (s, e) => 
+                        { 
+                            var textBlock = FindVisualChild<TextBlock>(border);
+                            string name = textBlock?.Text ?? "Эту карточку";
+                            if (MessageBox.Show($"Скрыть \"{name}\"?\n(Вернётся при следующем запуске)", "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes) 
+                            { 
+                                border.Visibility = Visibility.Collapsed;
+                            } 
+                            e.Handled = true;
+                        };
+                    }
+                }
+            }
+        }
+
+        // ✅ Обработчики для плиток панели "AI Генераторы" + удаление через ПКМ
+        private void SetupMediaTiles()
+        {
+            foreach (var border in FindVisualChildren<Border>(StartPageContainer))
+            {
+                if (border.Tag is string tagData && tagData.StartsWith("media|"))
+                {
+                    var parts = tagData.Split('|');
+                    if (parts.Length == 2)
+                    {
+                        string url = parts[1];
+                        border.MouseLeftButtonUp += (s, e) => { ShowBrowser(); Navigate(url); };
+                        
+                        // ✅ Удаление через ПКМ
+                        border.MouseRightButtonUp += (s, e) => 
+                        { 
+                            var textBlock = FindVisualChild<TextBlock>(border);
+                            string name = textBlock?.Text ?? "Эту карточку";
+                            if (MessageBox.Show($"Скрыть \"{name}\"?\n(Вернётся при следующем запуске)", "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes) 
+                            { 
+                                border.Visibility = Visibility.Collapsed;
+                            } 
+                            e.Handled = true;
+                        };
+                    }
+                }
+            }
+        }
+
+        // ✅ Вспомогательный метод для поиска дочернего элемента
+        private T FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+        {
+            if (parent == null) return null;
+            
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is T t) return t;
+                
+                var childOfChild = FindVisualChild<T>(child);
+                if (childOfChild != null) return childOfChild;
+            }
+            return null;
         }
 
         // === ИСТОРИЯ ===
