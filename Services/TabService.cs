@@ -41,11 +41,25 @@ namespace QuickSurfBrowser.Services
                 SelectedTab.Title = title;
         }
 
+        // Существующий метод (без URL)
         public void CreateNewTab(string title = "Новая вкладка")
         {
             var tab = new TabItemModel(_counter++, title);
             
-            // Снимаем выделение со всех остальных
+            foreach (var t in _tabs)
+                t.IsSelected = false;
+            
+            tab.IsSelected = true;
+            _tabs.Add(tab);
+            
+            TabSwitched?.Invoke(this, _tabs.Count - 1);
+        }
+
+        // НОВЫЙ МЕТОД: создание вкладки с URL
+        public void CreateNewTab(string title, string url)
+        {
+            var tab = new TabItemModel(_counter++, title, url);
+            
             foreach (var t in _tabs)
                 t.IsSelected = false;
             
@@ -89,7 +103,6 @@ namespace QuickSurfBrowser.Services
             }
             else if (wasSelected)
             {
-                // Выбираем соседнюю вкладку
                 int newIndex = Math.Min(idx, _tabs.Count - 1);
                 SelectTab(_tabs[newIndex]);
             }

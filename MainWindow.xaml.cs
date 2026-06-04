@@ -12,6 +12,7 @@ using System.Windows.Media.Imaging;
 using QuickSurfBrowser.Models;
 using QuickSurfBrowser.Services;
 #nullable disable
+
 namespace QuickSurfBrowser
 {
     public partial class MainWindow : Window
@@ -21,9 +22,12 @@ namespace QuickSurfBrowser
         private readonly HistoryService _history;
         private readonly TilesService _tiles;
         private readonly ChatContextService _chatContext;
+        private readonly GitHubService _gitHub;
         private AiWorkerService _aiWorker;
         private readonly string _dataPath;
         private readonly ObservableCollection<TabItemModel> _tabsCollection = new();
+        private System.Timers.Timer _gitHubTimer;
+        
         public ObservableCollection<TabItemModel> TabsCollection => _tabsCollection;
 
         public MainWindow()
@@ -37,11 +41,18 @@ namespace QuickSurfBrowser
             _browser = new BrowserService(WebView, OnNavigationCompleted);
             _chatContext = new ChatContextService(_dataPath);
             _aiWorker = new AiWorkerService(AiWorkerView, _dataPath);
+            _gitHub = new GitHubService();
             _tabs.TabSwitched += OnTabSwitched;
+            
+            // Таймер для обновления GitHub трендов каждые 6 часов
+            _gitHubTimer = new System.Timers.Timer(6 * 60 * 60 * 1000);
+            _gitHubTimer.Elapsed += async (s, e) => await LoadGitHubTrendingAsync();
+            _gitHubTimer.AutoReset = true;
+            
             this.Loaded += MainWindow_Loaded;
         }
 
-        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             _history.Load();
             _tiles.Load();
@@ -55,6 +66,10 @@ namespace QuickSurfBrowser
             _ = _aiWorker.InitializeAsync();
             _tabs.CreateNewTab("Старт");
             ShowStartPage();
+            
+            // Загружаем GitHub тренды
+            await LoadGitHubTrendingAsync();
+            _gitHubTimer.Start();
         }
 
         // === НАВИГАЦИЯ И ВКЛАДКИ ===
@@ -103,12 +118,10 @@ namespace QuickSurfBrowser
         private void BtnRefresh_Click(object s, RoutedEventArgs e) => _browser.Refresh();
         private void BtnGo_Click(object s, RoutedEventArgs e) => Navigate(UrlBox.Text);
 
-        // ✅ НОВЫЙ МЕТОД: Закрыть все вкладки, кроме текущей
         private void BtnCloseOtherTabs_Click(object sender, RoutedEventArgs e)
         {
             if (_tabs.SelectedTab == null) return;
             var currentTab = _tabs.SelectedTab;
-            // Собираем все вкладки кроме текущей
             var tabsToClose = _tabsCollection.Where(t => t != currentTab).ToList();
             foreach (var tab in tabsToClose)
             {
@@ -141,8 +154,8 @@ namespace QuickSurfBrowser
 
         private void BtnCreateTab_Click(object s, RoutedEventArgs e)
         {
-            _tabs.CreateNewTab("Новая вкладка");
-            ShowBrowser();
+            _tabs.CreateNewTab("Старт");
+            ShowStartPage();
         }
 
         protected override void OnKeyDown(KeyEventArgs e)
@@ -622,6 +635,113 @@ namespace QuickSurfBrowser
         private void BtnCancelAddTile_Click(object sender, RoutedEventArgs e)
         {
             AddTileForm.Visibility = Visibility.Collapsed;
+        }
+
+        // === GITHUB TRENDING ===
+        private async Task LoadGitHubTrendingAsync()
+        {
+            try
+            {
+                var repos = await _gitHub.GetTrendingAIReposAsync(8);
+                
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    GitHubTilesPanel.Children.Clear();
+                    foreach (var repo in repos)
+                    {
+                        GitHubTilesPanel.Children.Add(CreateGitHubTile(repo));
+                    }
+                    GitHubUpdateTime.Text = $"Обновлено: {DateTime.Now:HH:mm}";
+                });
+            }
+            catch (Exception)
+            {
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    GitHubUpdateTime.Text = "Ошибка загрузки";
+                });
+            }
+        }
+
+       private Border CreateGitHubTile(GitHubRepo repo)
+{
+    var border = new Border
+    {
+        Width = 240,
+        MinHeight = 65,
+        Margin = new Thickness(8, 4, 8, 4),
+        Background = Brushes.White,
+        BorderBrush = (Brush)FindResource("BorderBrush"),
+        BorderThickness = new Thickness(1),
+        CornerRadius = new CornerRadius(10),
+        Cursor = Cursors.Hand,
+        Tag = repo.HtmlUrl
+    };
+    
+    // Используем Grid вместо StackPanel для точного центрирования
+    var grid = new Grid();
+    
+   #pragma warning disable
+var stack = new StackPanel
+{
+    Margin = new Thickness(12, -6, 12, 0),
+    VerticalAlignment = VerticalAlignment.Center
+};
+#pragma warning restore
+    
+    // Название репозитория
+    var nameBlock = new TextBlock
+    {
+        Text = repo.FullName,
+        FontSize = 13,
+        FontWeight = FontWeights.Bold,
+        Foreground = System.Windows.Media.Brushes.Black,
+        TextTrimming = TextTrimming.CharacterEllipsis,
+        MaxWidth = 216
+    };
+    
+    // Статистика
+    var statsBlock = new TextBlock
+    {
+        Text = $"⭐ {FormatNumber(repo.StargazersCount)}    🍴 {FormatNumber(repo.ForksCount)}",
+        FontSize = 12,
+        FontWeight = FontWeights.Bold,
+        Foreground = System.Windows.Media.Brushes.Black,
+        Opacity = 0.75,
+        Margin = new Thickness(0, 2, 0, 0)
+    };
+    
+    // Язык программирования
+    var langBlock = new TextBlock
+    {
+        Text = repo.Language ?? "N/A",
+        FontSize = 10,
+        FontWeight = FontWeights.Bold,
+        Foreground = System.Windows.Media.Brushes.Gray,
+        Margin = new Thickness(0, 1, 0, 0)
+    };
+    
+    stack.Children.Add(nameBlock);
+    stack.Children.Add(statsBlock);
+    stack.Children.Add(langBlock);
+    
+    grid.Children.Add(stack);
+    border.Child = grid;
+    
+    border.MouseLeftButtonUp += (s, e) => 
+    { 
+        _tabs.CreateNewTab(repo.FullName, repo.HtmlUrl);
+        ShowBrowser();
+        _browser.Navigate(repo.HtmlUrl);
+    };
+    
+    return border;
+}
+        private string FormatNumber(int num)
+        {
+            if (num >= 1000)
+                return (num / 1000.0).ToString("0.0") + "k";
+            return num.ToString();
         }
 
         // === ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ===
