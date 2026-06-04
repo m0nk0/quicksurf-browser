@@ -17,6 +17,9 @@
 
   <ItemGroup>
     <Resource Include="Assets\**\*" />
+    <Content Include="Assets\floating-menu.js">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

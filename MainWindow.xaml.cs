@@ -11,7 +11,6 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using QuickSurfBrowser.Models;
 using QuickSurfBrowser.Services;
-#nullable disable
 
 namespace QuickSurfBrowser
 {
@@ -24,6 +23,8 @@ namespace QuickSurfBrowser
         private readonly ChatContextService _chatContext;
         private readonly GitHubService _gitHub;
         private AiWorkerService _aiWorker;
+        private AISelectionService _aiSelectionService;
+        private FloatingMenuService _floatingMenuService;
         private readonly string _dataPath;
         private readonly ObservableCollection<TabItemModel> _tabsCollection = new();
         private System.Timers.Timer _gitHubTimer;
@@ -44,7 +45,17 @@ namespace QuickSurfBrowser
             _gitHub = new GitHubService();
             _tabs.TabSwitched += OnTabSwitched;
             
-            // Таймер для обновления GitHub трендов каждые 6 часов
+            _aiSelectionService = new AISelectionService(
+                _aiWorker,
+                _chatContext,
+                (text, isUser, isLoading) => AddChatMessageForSelection(text, isUser, isLoading),
+                (text) => ChatInput.Text = text,
+                () => { AISidebar.Visibility = Visibility.Visible; HistoryPanel.Visibility = Visibility.Collapsed; UpdateSidebarWidth(); },
+                () => ChatInput.Focus()
+            );
+            
+            _floatingMenuService = new FloatingMenuService(WebView, OnFloatingMenuAskAI);
+            
             _gitHubTimer = new System.Timers.Timer(6 * 60 * 60 * 1000);
             _gitHubTimer.Elapsed += async (s, e) => await LoadGitHubTrendingAsync();
             _gitHubTimer.AutoReset = true;
@@ -62,17 +73,27 @@ namespace QuickSurfBrowser
             SetupModelTiles();
             SetupMediaTiles();
             UpdateContextStatus();
-            _ = _browser.InitializeAsync();
-            _ = _aiWorker.InitializeAsync();
+            await _browser.InitializeAsync();
+            await _aiWorker.InitializeAsync();
+            
+             // Небольшая задержка для полной загрузки
+            await Task.Delay(500);
+
+            // Инициализируем плавающее меню (стандартное меню WebView2 остаётся)
+            await _floatingMenuService.InitializeAsync();
+            
             _tabs.CreateNewTab("Старт");
             ShowStartPage();
             
-            // Загружаем GitHub тренды
             await LoadGitHubTrendingAsync();
             _gitHubTimer.Start();
         }
 
-        // === НАВИГАЦИЯ И ВКЛАДКИ ===
+        private void OnFloatingMenuAskAI(string selectedText)
+        {
+            _aiSelectionService.ProcessSelection(selectedText, "ask");
+        }
+
         private void OnNavigationCompleted(string url, string title)
         {
             if (_tabs.SelectedTab != null)
@@ -96,7 +117,6 @@ namespace QuickSurfBrowser
             }
         }
 
-        // === ОБРАБОТЧИКИ ВКЛАДОК ===
         private void Tab_Click(object sender, MouseButtonEventArgs e)
         {
             if (sender is Border border && border.Tag is TabItemModel tab)
@@ -112,7 +132,6 @@ namespace QuickSurfBrowser
             }
         }
 
-        // === КНОПКИ НАВИГАЦИИ ===
         private void BtnBack_Click(object s, RoutedEventArgs e) => _browser.GoBack();
         private void BtnForward_Click(object s, RoutedEventArgs e) => _browser.GoForward();
         private void BtnRefresh_Click(object s, RoutedEventArgs e) => _browser.Refresh();
@@ -211,7 +230,6 @@ namespace QuickSurfBrowser
             _tabs.SetCurrentUrl(url);
         }
 
-        // === СТАРТОВАЯ СТРАНИЦА ===
         private void ShowStartPage()
         {
             UrlBox.Text = "";
@@ -247,7 +265,6 @@ namespace QuickSurfBrowser
 
         private void BtnHome_Click(object sender, RoutedEventArgs e) => ShowStartPage();
 
-        // === ПЛИТКИ ===
         private void RenderTiles()
         {
             TilesWrapPanel.Children.Clear();
@@ -267,8 +284,7 @@ namespace QuickSurfBrowser
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(12),
                 Cursor = Cursors.Hand,
-                ToolTip = url,
-                SnapsToDevicePixels = true
+                ToolTip = url
             };
             var stack = new StackPanel
             {
@@ -278,13 +294,7 @@ namespace QuickSurfBrowser
             };
             var img = new Image { Width = 32, Height = 32, Margin = new Thickness(0, 0, 0, 4) };
             try { img.Source = new BitmapImage(new Uri($"https://www.google.com/s2/favicons?domain={new Uri(url).Host}&sz=64")); } catch { }
-            var text = new TextBlock
-            {
-                Text = title,
-                TextAlignment = TextAlignment.Center,
-                FontSize = 10,
-                FontWeight = FontWeights.Medium
-            };
+            var text = new TextBlock { Text = title, TextAlignment = TextAlignment.Center, FontSize = 10, FontWeight = FontWeights.Medium };
             stack.Children.Add(img);
             stack.Children.Add(text);
             border.Child = stack;
@@ -310,78 +320,53 @@ namespace QuickSurfBrowser
 
         private void SetupAITiles()
         {
-            foreach (var border in FindVisualChildren<Border>(StartPageContainer))
+            var tiles = new (string name, string url)[]
             {
-                if (border.Tag is string tagData && tagData.Contains("|") && !tagData.StartsWith("model|") && !tagData.StartsWith("media|"))
-                {
-                    var parts = tagData.Split('|');
-                    if (parts.Length == 2)
-                    {
-                        string url = parts[1];
-                        border.MouseLeftButtonUp += (s, e) => { ShowBrowser(); Navigate(url); };
-                        border.MouseRightButtonUp += (s, e) =>
-                        {
-                            if (MessageBox.Show($"Скрыть \"{parts[0]}\"?\n(Вернётся при следующем запуске)", "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
-                            {
-                                border.Visibility = Visibility.Collapsed;
-                            }
-                            e.Handled = true;
-                        };
-                    }
-                }
-            }
+                ("Qwen", "https://chat.qwen.ai"),
+                ("DeepSeek", "https://chat.deepseek.com"),
+                ("Алиса", "https://alice.yandex.ru"),
+                ("ChatGPT", "https://chatgpt.com"),
+                ("GigaChat", "https://giga.chat"),
+                ("Claude", "https://claude.ai"),
+                ("Gemini", "https://gemini.google.com"),
+                ("Copilot", "https://copilot.microsoft.com")
+            };
+            foreach (var tile in tiles)
+                AITilesPanel.Children.Add(CreateTile(tile.name, tile.url, false));
         }
 
         private void SetupModelTiles()
         {
-            foreach (var border in FindVisualChildren<Border>(StartPageContainer))
+            var tiles = new (string name, string url)[]
             {
-                if (border.Tag is string tagData && tagData.StartsWith("model|"))
-                {
-                    var parts = tagData.Split('|');
-                    if (parts.Length == 2)
-                    {
-                        string url = parts[1];
-                        border.MouseLeftButtonUp += (s, e) => { ShowBrowser(); Navigate(url); };
-                        border.MouseRightButtonUp += (s, e) =>
-                        {
-                            var textBlock = FindVisualChild<TextBlock>(border);
-                            string name = textBlock?.Text ?? "Эту карточку";
-                            if (MessageBox.Show($"Скрыть \"{name}\"?\n(Вернётся при следующем запуске)", "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
-                            {
-                                border.Visibility = Visibility.Collapsed;
-                            }
-                            e.Handled = true;
-                        };
-                    }
-                }
-            }
+                ("Hugging Face", "https://huggingface.co"),
+                ("Civitai", "https://civitai.com"),
+                ("OpenModelDB", "https://openmodeldb.info"),
+                ("Kaggle", "https://www.kaggle.com/models"),
+                ("Ollama", "https://ollama.com/library"),
+                ("Replicate", "https://replicate.com"),
+                ("TensorFlow", "https://tfhub.dev"),
+                ("PyTorch", "https://pytorch.org/hub")
+            };
+            foreach (var tile in tiles)
+                ModelTilesPanel.Children.Add(CreateTile(tile.name, tile.url, false));
         }
 
         private void SetupMediaTiles()
         {
-            foreach (var border in FindVisualChildren<Border>(StartPageContainer))
+            var tiles = new (string name, string url)[]
             {
-                if (border.Tag is string tagData && tagData.StartsWith("media|"))
-                {
-                    var parts = tagData.Split('|');
-                    if (parts.Length == 2)
-                    {
-                        string url = parts[1];
-                        border.MouseLeftButtonUp += (s, e) => { ShowBrowser(); Navigate(url); };
-                        border.MouseRightButtonUp += (s, e) =>
-                        {
-                            var textBlock = FindVisualChild<TextBlock>(border);
-                            string name = textBlock?.Text ?? "Эту карточку";
-                            if (MessageBox.Show($"Скрыть \"{name}\"?\n(Вернётся при следующем запуске)", "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
-                            {
-                                border.Visibility = Visibility.Collapsed;
-                            }
-                            e.Handled = true;
-                        };
-                    }
-                }
-            }
+                ("Kandinsky", "https://www.sberbank.ru/ru/person/kandinsky"),
+                ("Leonardo", "https://leonardo.ai"),
+                ("Suno", "https://suno.com"),
+                ("Craiyon", "https://www.craiyon.com"),
+                ("Playground", "https://playgroundai.com"),
+                ("Udio", "https://www.udio.com"),
+                ("Runway", "https://runwayml.com"),
+                ("Pika", "https://pika.art")
+            };
+            foreach (var tile in tiles)
+                MediaTilesPanel.Children.Add(CreateTile(tile.name, tile.url, false));
         }
 
         private T FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
@@ -397,13 +382,10 @@ namespace QuickSurfBrowser
             return null;
         }
 
-        // === ИСТОРИЯ ===
         private void BtnToggleHistory_Click(object sender, RoutedEventArgs e)
         {
             if (HistoryPanel.Visibility == Visibility.Visible)
-            {
                 HistoryPanel.Visibility = Visibility.Collapsed;
-            }
             else
             {
                 AISidebar.Visibility = Visibility.Collapsed;
@@ -441,7 +423,6 @@ namespace QuickSurfBrowser
             }
         }
 
-        // === AI САЙДБАР & ЧАТ ===
         private void BtnToggleAI_Click(object s, RoutedEventArgs e)
         {
             if (AISidebar.Visibility == Visibility.Visible)
@@ -462,6 +443,7 @@ namespace QuickSurfBrowser
         }
 
         private async void BtnSendChat_Click(object s, RoutedEventArgs e) => await SendRealChat();
+        
         private async void ChatInput_KeyDown(object s, KeyEventArgs e)
         {
             if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.Control)
@@ -519,7 +501,32 @@ namespace QuickSurfBrowser
             return container;
         }
 
-        // === УПРАВЛЕНИЕ КОНТЕКСТОМ ===
+        private void AddChatMessageForSelection(string text, bool isUser, bool isLoading = false)
+        {
+            var container = new Border
+            {
+                Margin = new Thickness(0, 0, 0, 15),
+                HorizontalAlignment = isUser ? HorizontalAlignment.Right : HorizontalAlignment.Left
+            };
+            var bubble = new Border
+            {
+                Background = isUser ? (Brush)FindResource("PrimaryBrush") : Brushes.White,
+                CornerRadius = new CornerRadius(12),
+                Padding = new Thickness(12, 10, 12, 10),
+                MaxWidth = 320
+            };
+            var tb = new TextBlock
+            {
+                Text = text,
+                TextWrapping = TextWrapping.Wrap,
+                Foreground = isUser ? Brushes.White : (Brush)FindResource("TextBrush")
+            };
+            bubble.Child = tb;
+            container.Child = bubble;
+            ChatMessages.Children.Add(container);
+            ChatScrollViewer.ScrollToEnd();
+        }
+
         private void BtnSaveContext_Click(object s, RoutedEventArgs e)
         {
             var provider = (AIProviderComboBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Perplexity";
@@ -544,49 +551,6 @@ namespace QuickSurfBrowser
                 ContextStatusText.Text = $"Контекст: {_chatContext.MessageCount} сообщений";
         }
 
-        // === КОНТЕКСТНОЕ МЕНЮ (ПКМ) ===
-        private void CtxBack_Click(object s, RoutedEventArgs e) => _browser.GoBack();
-        private void CtxForward_Click(object s, RoutedEventArgs e) => _browser.GoForward();
-        private void CtxRefresh_Click(object s, RoutedEventArgs e) => _browser.Refresh();
-        private void CtxCopy_Click(object s, RoutedEventArgs e) => WebView.CoreWebView2?.ExecuteScriptAsync("document.execCommand('copy')");
-        private void CtxSearch_Click(object s, RoutedEventArgs e) => Navigate("https://www.google.com/search");
-
-        private async void CtxAITranslate_Click(object s, RoutedEventArgs e)
-        {
-            var t = await WebView.CoreWebView2.ExecuteScriptAsync("window.getSelection().toString()");
-            if (!string.IsNullOrWhiteSpace(t)) OpenAISidebar($"Переведи: {t}");
-        }
-
-        private async void CtxAIExplain_Click(object s, RoutedEventArgs e)
-        {
-            var t = await WebView.CoreWebView2.ExecuteScriptAsync("window.getSelection().toString()");
-            if (!string.IsNullOrWhiteSpace(t)) OpenAISidebar($"Объясни: {t}");
-        }
-
-        private void CtxAISummarize_Click(object s, RoutedEventArgs e)
-        {
-            OpenAISidebar($"Краткое содержание: {WebView.CoreWebView2.DocumentTitle}");
-        }
-
-        private async void CtxAICheckCode_Click(object s, RoutedEventArgs e)
-        {
-            var t = await WebView.CoreWebView2.ExecuteScriptAsync("window.getSelection().toString()");
-            if (!string.IsNullOrWhiteSpace(t)) OpenAISidebar($"Найди ошибки в коде: {t}");
-        }
-
-        private void OpenAISidebar(string prompt = null)
-        {
-            AISidebar.Visibility = Visibility.Visible;
-            HistoryPanel.Visibility = Visibility.Collapsed;
-            UpdateSidebarWidth();
-            if (!string.IsNullOrWhiteSpace(prompt))
-            {
-                ChatInput.Text = prompt;
-                ChatInput.Focus();
-            }
-        }
-
-        // === ПОИСК НА СТАРТОВОЙ ===
         private void SearchBox_KeyDown(object sender, KeyEventArgs e) { if (e.Key == Key.Enter) PerformSearch(); }
         private void SearchBox_GotFocus(object sender, RoutedEventArgs e) { if (SearchBox.Text == "Введите запрос...") SearchBox.Text = ""; }
         private void SearchBox_LostFocus(object sender, RoutedEventArgs e) { if (string.IsNullOrWhiteSpace(SearchBox.Text)) SearchBox.Text = "Введите запрос..."; }
@@ -611,7 +575,6 @@ namespace QuickSurfBrowser
             Navigate(url);
         }
 
-        // === УПРАВЛЕНИЕ ПЛИТКАМИ (ФОРМА) ===
         private void BtnAddTile_Click(object sender, RoutedEventArgs e)
         {
             AddTileForm.Visibility = Visibility.Visible;
@@ -637,13 +600,11 @@ namespace QuickSurfBrowser
             AddTileForm.Visibility = Visibility.Collapsed;
         }
 
-        // === GITHUB TRENDING ===
         private async Task LoadGitHubTrendingAsync()
         {
             try
             {
                 var repos = await _gitHub.GetTrendingAIReposAsync(8);
-                
                 await Dispatcher.InvokeAsync(() =>
                 {
                     GitHubTilesPanel.Children.Clear();
@@ -663,80 +624,72 @@ namespace QuickSurfBrowser
             }
         }
 
-       private Border CreateGitHubTile(GitHubRepo repo)
-{
-    var border = new Border
-    {
-        Width = 240,
-        MinHeight = 65,
-        Margin = new Thickness(8, 4, 8, 4),
-        Background = Brushes.White,
-        BorderBrush = (Brush)FindResource("BorderBrush"),
-        BorderThickness = new Thickness(1),
-        CornerRadius = new CornerRadius(10),
-        Cursor = Cursors.Hand,
-        Tag = repo.HtmlUrl
-    };
-    
-    // Используем Grid вместо StackPanel для точного центрирования
-    var grid = new Grid();
-    
-   #pragma warning disable
-var stack = new StackPanel
-{
-    Margin = new Thickness(12, -6, 12, 0),
-    VerticalAlignment = VerticalAlignment.Center
-};
-#pragma warning restore
-    
-    // Название репозитория
-    var nameBlock = new TextBlock
-    {
-        Text = repo.FullName,
-        FontSize = 13,
-        FontWeight = FontWeights.Bold,
-        Foreground = System.Windows.Media.Brushes.Black,
-        TextTrimming = TextTrimming.CharacterEllipsis,
-        MaxWidth = 216
-    };
-    
-    // Статистика
-    var statsBlock = new TextBlock
-    {
-        Text = $"⭐ {FormatNumber(repo.StargazersCount)}    🍴 {FormatNumber(repo.ForksCount)}",
-        FontSize = 12,
-        FontWeight = FontWeights.Bold,
-        Foreground = System.Windows.Media.Brushes.Black,
-        Opacity = 0.75,
-        Margin = new Thickness(0, 2, 0, 0)
-    };
-    
-    // Язык программирования
-    var langBlock = new TextBlock
-    {
-        Text = repo.Language ?? "N/A",
-        FontSize = 10,
-        FontWeight = FontWeights.Bold,
-        Foreground = System.Windows.Media.Brushes.Gray,
-        Margin = new Thickness(0, 1, 0, 0)
-    };
-    
-    stack.Children.Add(nameBlock);
-    stack.Children.Add(statsBlock);
-    stack.Children.Add(langBlock);
-    
-    grid.Children.Add(stack);
-    border.Child = grid;
-    
-    border.MouseLeftButtonUp += (s, e) => 
-    { 
-        _tabs.CreateNewTab(repo.FullName, repo.HtmlUrl);
-        ShowBrowser();
-        _browser.Navigate(repo.HtmlUrl);
-    };
-    
-    return border;
-}
+        private Border CreateGitHubTile(GitHubRepo repo)
+        {
+            var border = new Border
+            {
+                Width = 240,
+                MinHeight = 65,
+                Margin = new Thickness(8, 4, 8, 4),
+                Background = Brushes.White,
+                BorderBrush = (Brush)FindResource("BorderBrush"),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(10),
+                Cursor = Cursors.Hand,
+                Tag = repo.HtmlUrl,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            
+            var stack = new StackPanel
+            {
+                Margin = new Thickness(12, 0, 12, 0),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            
+            var nameBlock = new TextBlock
+            {
+                Text = repo.FullName,
+                FontSize = 13,
+                FontWeight = FontWeights.Bold,
+                Foreground = System.Windows.Media.Brushes.Black,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                MaxWidth = 216
+            };
+            
+            var statsBlock = new TextBlock
+            {
+                Text = $"⭐ {FormatNumber(repo.StargazersCount)}    🍴 {FormatNumber(repo.ForksCount)}",
+                FontSize = 12,
+                FontWeight = FontWeights.Bold,
+                Foreground = System.Windows.Media.Brushes.Black,
+                Opacity = 0.75,
+                Margin = new Thickness(0, 2, 0, 0)
+            };
+            
+            var langBlock = new TextBlock
+            {
+                Text = repo.Language ?? "N/A",
+                FontSize = 10,
+                FontWeight = FontWeights.Bold,
+                Foreground = System.Windows.Media.Brushes.Gray,
+                Margin = new Thickness(0, 1, 0, 0)
+            };
+            
+            stack.Children.Add(nameBlock);
+            stack.Children.Add(statsBlock);
+            stack.Children.Add(langBlock);
+            border.Child = stack;
+            
+            border.MouseLeftButtonUp += (s, e) => 
+            { 
+                _tabs.CreateNewTab(repo.FullName, repo.HtmlUrl);
+                ShowBrowser();
+                _browser.Navigate(repo.HtmlUrl);
+            };
+            
+            return border;
+        }
+
         private string FormatNumber(int num)
         {
             if (num >= 1000)
@@ -744,7 +697,6 @@ var stack = new StackPanel
             return num.ToString();
         }
 
-        // === ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ===
         private IEnumerable<T> FindVisualChildren<T>(DependencyObject obj) where T : DependencyObject
         {
             if (obj != null)

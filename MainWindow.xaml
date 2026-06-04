@@ -20,20 +20,6 @@
         <SolidColorBrush x:Key="TextBrush" Color="#4A4A4A"/>
         <SolidColorBrush x:Key="BorderBrush" Color="#E5E0D8"/>
         
-        <ContextMenu x:Key="MainContextMenu">
-            <MenuItem Header=" Назад" Click="CtxBack_Click"/>
-            <MenuItem Header=" Вперед" Click="CtxForward_Click"/>
-            <MenuItem Header=" Обновить" Click="CtxRefresh_Click"/>
-            <Separator/>
-            <MenuItem Header="🤖 AI: Перевести выделенное" Click="CtxAITranslate_Click"/>
-            <MenuItem Header="🤖 AI: Объяснить выделенное" Click="CtxAIExplain_Click"/>
-            <MenuItem Header="🤖 AI: Суммаризировать страницу" Click="CtxAISummarize_Click"/>
-            <MenuItem Header="🤖 AI: Найти ошибки в коде" Click="CtxAICheckCode_Click"/>
-            <Separator/>
-            <MenuItem Header="📋 Копировать" Click="CtxCopy_Click"/>
-            <MenuItem Header="🔍 Искать в Google" Click="CtxSearch_Click"/>
-        </ContextMenu>
-
         <!-- Стили кнопок и элементов -->
         <Style x:Key="NavButtonStyle" TargetType="Button">
             <Setter Property="Width" Value="40"/>
@@ -133,7 +119,6 @@
 
         <!-- ВЕРХНЯЯ ПАНЕЛЬ -->
         <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Background="White" Margin="12,12,12,6">
-            <!-- Кнопки навигации и адресная строка -->
             <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                 <Button Content="🏠" Style="{StaticResource NavButtonStyle}" Click="BtnHome_Click" ToolTip="На стартовую"/>
                 <Button Content="◀" Style="{StaticResource NavButtonStyle}" Click="BtnBack_Click" ToolTip="Назад"/>
@@ -246,39 +231,38 @@
                     </ItemsControl>
                 </Border>
                 
-              <StackPanel Grid.Column="1" Orientation="Horizontal">
-    <Button Content="+"
-    Width="32"
-    Height="32"
-    Margin="0,0,4,0"
-    Background="{StaticResource AccentBrush}"
-    Foreground="White"
-    BorderThickness="0"
-    FontSize="20"
-    FontWeight="Bold"
-    Cursor="Hand"
-    Click="BtnCreateTab_Click"
-    ToolTip="Новая вкладка (Ctrl+T)"/>
-    <Button Content="⊞"
-    Width="32"
-    Height="32"
-    Margin="0"
-    Background="#E5E0D8"
-    Foreground="#4A4A4A"
-    BorderThickness="0"
-    FontSize="16"
-    FontWeight="Bold"
-    Cursor="Hand"
-    Click="BtnCloseOtherTabs_Click"
-    ToolTip="Закрыть все, кроме текущей"/>
-</StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Content="+"
+                            Width="32"
+                            Height="32"
+                            Margin="0,0,4,0"
+                            Background="{StaticResource AccentBrush}"
+                            Foreground="White"
+                            BorderThickness="0"
+                            FontSize="20"
+                            FontWeight="Bold"
+                            Cursor="Hand"
+                            Click="BtnCreateTab_Click"
+                            ToolTip="Новая вкладка (Ctrl+T)"/>
+                    <Button Content="⊞"
+                            Width="32"
+                            Height="32"
+                            Margin="0"
+                            Background="#E5E0D8"
+                            Foreground="#4A4A4A"
+                            BorderThickness="0"
+                            FontSize="16"
+                            FontWeight="Bold"
+                            Cursor="Hand"
+                            Click="BtnCloseOtherTabs_Click"
+                            ToolTip="Закрыть все, кроме текущей"/>
+                </StackPanel>
             </Grid>
         </StackPanel>
 
-        <!-- WebView2 (браузер) -->
+        <!-- WebView2 (браузер) - стандартное меню работает -->
         <Border Grid.Row="1" Grid.Column="0" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
-            <wv2:WebView2 x:Name="WebView" 
-              DefaultBackgroundColor="White"/>
+            <wv2:WebView2 x:Name="WebView" DefaultBackgroundColor="White"/>
         </Border>
 
         <!-- Панель истории -->
@@ -502,7 +486,8 @@
                                VerticalAlignment="Center" 
                                Foreground="#888888" 
                                Margin="0,0,12,0"/>
-                    <Button Content="+" 
+                    <Button x:Name="BtnAddTile" 
+                            Content="+" 
                             Width="32" 
                             Height="32" 
                             Background="{StaticResource AccentBrush}" 
@@ -512,27 +497,7 @@
                             FontWeight="Bold" 
                             Cursor="Hand" 
                             Click="BtnAddTile_Click" 
-                            ToolTip="Добавить новый сайт" 
-                            VerticalAlignment="Center">
-                        <Button.Style>
-                            <Style TargetType="Button">
-                                <Setter Property="Template">
-                                    <Setter.Value>
-                                        <ControlTemplate TargetType="Button">
-                                            <Border Background="{TemplateBinding Background}" CornerRadius="6">
-                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                            </Border>
-                                        </ControlTemplate>
-                                    </Setter.Value>
-                                </Setter>
-                                <Style.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="Background" Value="#FF8C42"/>
-                                    </Trigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Button.Style>
-                    </Button>
+                            ToolTip="Добавить новый сайт"/>
                     
                     <StackPanel x:Name="AddTileForm" Orientation="Horizontal" Visibility="Collapsed" Margin="12,0,0,0">
                         <TextBox x:Name="NewTileTitle" 
@@ -555,7 +520,8 @@
                                  BorderBrush="#E5E0D8" 
                                  BorderThickness="1" 
                                  Text="https://..."/>
-                        <Button Content="✓" 
+                        <Button x:Name="BtnConfirmAddTile" 
+                                Content="✓" 
                                 Width="28" 
                                 Height="28" 
                                 Background="{StaticResource AccentBrush}" 
@@ -564,7 +530,8 @@
                                 Cursor="Hand" 
                                 Click="BtnConfirmAddTile_Click" 
                                 Margin="0,0,4,0"/>
-                        <Button Content="✕" 
+                        <Button x:Name="BtnCancelAddTile" 
+                                Content="✕" 
                                 Width="28" 
                                 Height="28" 
                                 Background="#E5E0D8" 
@@ -684,106 +651,24 @@
                                        HorizontalAlignment="Center" 
                                        Opacity="0.8"/>
                             <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="200" HorizontalScrollBarVisibility="Disabled">
-                                <WrapPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                    <!-- 8 карточек ИИ помощников -->
-                                    <Border Width="80" Height="80" Margin="4" Background="White" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="12" Cursor="Hand" Tag="Qwen|https://chat.qwen.ai">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Image Width="32" Height="32" Margin="0,0,0,4">
-                                                <Image.Source>
-                                                    <BitmapImage UriSource="https://www.google.com/s2/favicons?domain=chat.qwen.ai&amp;sz=64"/>
-                                                </Image.Source>
-                                            </Image>
-                                            <TextBlock Text="Qwen" TextAlignment="Center" FontSize="10" Foreground="#4A4A4A" FontWeight="Medium"/>
-                                        </StackPanel>
-                                    </Border>
-                                    <Border Width="80" Height="80" Margin="4" Background="White" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="12" Cursor="Hand" Tag="DeepSeek|https://chat.deepseek.com">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Image Width="32" Height="32" Margin="0,0,0,4">
-                                                <Image.Source>
-                                                    <BitmapImage UriSource="https://www.google.com/s2/favicons?domain=chat.deepseek.com&amp;sz=64"/>
-                                                </Image.Source>
-                                            </Image>
-                                            <TextBlock Text="DeepSeek" TextAlignment="Center" FontSize="10" Foreground="#4A4A4A" FontWeight="Medium"/>
-                                        </StackPanel>
-                                    </Border>
-                                    <Border Width="80" Height="80" Margin="4" Background="White" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="12" Cursor="Hand" Tag="Алиса|https://alice.yandex.ru">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Image Width="32" Height="32" Margin="0,0,0,4">
-                                                <Image.Source>
-                                                    <BitmapImage UriSource="https://www.google.com/s2/favicons?domain=alice.yandex.ru&amp;sz=64"/>
-                                                </Image.Source>
-                                            </Image>
-                                            <TextBlock Text="Алиса" TextAlignment="Center" FontSize="10" Foreground="#4A4A4A" FontWeight="Medium"/>
-                                        </StackPanel>
-                                    </Border>
-                                    <Border Width="80" Height="80" Margin="4" Background="White" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="12" Cursor="Hand" Tag="ChatGPT|https://chatgpt.com">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Image Width="32" Height="32" Margin="0,0,0,4">
-                                                <Image.Source>
-                                                    <BitmapImage UriSource="https://www.google.com/s2/favicons?domain=chatgpt.com&amp;sz=64"/>
-                                                </Image.Source>
-                                            </Image>
-                                            <TextBlock Text="ChatGPT" TextAlignment="Center" FontSize="10" Foreground="#4A4A4A" FontWeight="Medium"/>
-                                        </StackPanel>
-                                    </Border>
-                                    <Border Width="80" Height="80" Margin="4" Background="White" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="12" Cursor="Hand" Tag="GigaChat|https://giga.chat">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Image Width="32" Height="32" Margin="0,0,0,4">
-                                                <Image.Source>
-                                                    <BitmapImage UriSource="https://www.google.com/s2/favicons?domain=giga.chat&amp;sz=64"/>
-                                                </Image.Source>
-                                            </Image>
-                                            <TextBlock Text="GigaChat" TextAlignment="Center" FontSize="10" Foreground="#4A4A4A" FontWeight="Medium"/>
-                                        </StackPanel>
-                                    </Border>
-                                    <Border Width="80" Height="80" Margin="4" Background="White" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="12" Cursor="Hand" Tag="Claude|https://claude.ai">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Image Width="32" Height="32" Margin="0,0,0,4">
-                                                <Image.Source>
-                                                    <BitmapImage UriSource="https://www.google.com/s2/favicons?domain=claude.ai&amp;sz=64"/>
-                                                </Image.Source>
-                                            </Image>
-                                            <TextBlock Text="Claude" TextAlignment="Center" FontSize="10" Foreground="#4A4A4A" FontWeight="Medium"/>
-                                        </StackPanel>
-                                    </Border>
-                                    <Border Width="80" Height="80" Margin="4" Background="White" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="12" Cursor="Hand" Tag="Gemini|https://gemini.google.com">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Image Width="32" Height="32" Margin="0,0,0,4">
-                                                <Image.Source>
-                                                    <BitmapImage UriSource="https://www.google.com/s2/favicons?domain=gemini.google.com&amp;sz=64"/>
-                                                </Image.Source>
-                                            </Image>
-                                            <TextBlock Text="Gemini" TextAlignment="Center" FontSize="10" Foreground="#4A4A4A" FontWeight="Medium"/>
-                                        </StackPanel>
-                                    </Border>
-                                    <Border Width="80" Height="80" Margin="4" Background="White" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="12" Cursor="Hand" Tag="Copilot|https://copilot.microsoft.com">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Image Width="32" Height="32" Margin="0,0,0,4">
-                                                <Image.Source>
-                                                    <BitmapImage UriSource="https://www.google.com/s2/favicons?domain=copilot.microsoft.com&amp;sz=64"/>
-                                                </Image.Source>
-                                            </Image>
-                                            <TextBlock Text="Copilot" TextAlignment="Center" FontSize="10" Foreground="#4A4A4A" FontWeight="Medium"/>
-                                        </StackPanel>
-                                    </Border>
-                                </WrapPanel>
+                                <WrapPanel x:Name="AITilesPanel" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </ScrollViewer>
                         </StackPanel>
                     </Border>
 
-                   <!-- Блок 2: 🐙 GitHub Trending AI -->
+                    <!-- Блок 2: 🐙 GitHub Trending AI -->
                     <Border Grid.Row="0" Grid.Column="1" Margin="15" Background="White" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="16" Padding="12">
                         <Border.Effect>
                             <DropShadowEffect BlurRadius="15" ShadowDepth="2" Opacity="0.06" Color="#000000"/>
                         </Border.Effect>
                         <StackPanel>
                             <TextBlock Text="🐙 GitHub Trending AI" FontSize="13" FontWeight="SemiBold" 
-                                    Foreground="#4A4A4A" Margin="0,0,0,8" HorizontalAlignment="Center" Opacity="0.8"/>
+                                       Foreground="#4A4A4A" Margin="0,0,0,8" HorizontalAlignment="Center" Opacity="0.8"/>
                             <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" MaxHeight="90">
                                 <StackPanel x:Name="GitHubTilesPanel" Orientation="Horizontal" HorizontalAlignment="Left"/>
                             </ScrollViewer>
                             <TextBlock x:Name="GitHubUpdateTime" Text="Обновляется..." FontSize="9" 
-                                    Foreground="#888" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+                                       Foreground="#888" HorizontalAlignment="Center" Margin="0,5,0,0"/>
                         </StackPanel>
                     </Border>
 
@@ -801,73 +686,7 @@
                                        HorizontalAlignment="Center" 
                                        Opacity="0.8"/>
                             <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="200" HorizontalScrollBarVisibility="Disabled">
-                                <WrapPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                    <!-- 8 карточек ИИ моделей -->
-                                    <Border Width="80" Height="80" Margin="4" Background="White" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="12" Cursor="Hand" Tag="model|https://huggingface.co" ToolTip="Hugging Face — крупнейший хаб AI-моделей">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Image Width="32" Height="32" Margin="0,0,0,4">
-                                                <Image.Source><BitmapImage UriSource="https://www.google.com/s2/favicons?domain=huggingface.co&amp;sz=64"/></Image.Source>
-                                            </Image>
-                                            <TextBlock Text="Hugging Face" TextAlignment="Center" FontSize="10" Foreground="#4A4A4A" FontWeight="Medium"/>
-                                        </StackPanel>
-                                    </Border>
-                                    <Border Width="80" Height="80" Margin="4" Background="White" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="12" Cursor="Hand" Tag="model|https://civitai.com" ToolTip="Civitai — модели для Stable Diffusion">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Image Width="32" Height="32" Margin="0,0,0,4">
-                                                <Image.Source><BitmapImage UriSource="https://www.google.com/s2/favicons?domain=civitai.com&amp;sz=64"/></Image.Source>
-                                            </Image>
-                                            <TextBlock Text="Civitai" TextAlignment="Center" FontSize="10" Foreground="#4A4A4A" FontWeight="Medium"/>
-                                        </StackPanel>
-                                    </Border>
-                                    <Border Width="80" Height="80" Margin="4" Background="White" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="12" Cursor="Hand" Tag="model|https://openmodeldb.info" ToolTip="OpenModelDB — модели для апскейлинга">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Image Width="32" Height="32" Margin="0,0,0,4">
-                                                <Image.Source><BitmapImage UriSource="https://www.google.com/s2/favicons?domain=openmodeldb.info&amp;sz=64"/></Image.Source>
-                                            </Image>
-                                            <TextBlock Text="OpenModelDB" TextAlignment="Center" FontSize="10" Foreground="#4A4A4A" FontWeight="Medium"/>
-                                        </StackPanel>
-                                    </Border>
-                                    <Border Width="80" Height="80" Margin="4" Background="White" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="12" Cursor="Hand" Tag="model|https://www.kaggle.com/models" ToolTip="Kaggle Models — готовые модели">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Image Width="32" Height="32" Margin="0,0,0,4">
-                                                <Image.Source><BitmapImage UriSource="https://www.google.com/s2/favicons?domain=kaggle.com&amp;sz=64"/></Image.Source>
-                                            </Image>
-                                            <TextBlock Text="Kaggle" TextAlignment="Center" FontSize="10" Foreground="#4A4A4A" FontWeight="Medium"/>
-                                        </StackPanel>
-                                    </Border>
-                                    <Border Width="80" Height="80" Margin="4" Background="White" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="12" Cursor="Hand" Tag="model|https://ollama.com/library" ToolTip="Ollama Library — локальные LLM">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Image Width="32" Height="32" Margin="0,0,0,4">
-                                                <Image.Source><BitmapImage UriSource="https://www.google.com/s2/favicons?domain=ollama.com&amp;sz=64"/></Image.Source>
-                                            </Image>
-                                            <TextBlock Text="Ollama" TextAlignment="Center" FontSize="10" Foreground="#4A4A4A" FontWeight="Medium"/>
-                                        </StackPanel>
-                                    </Border>
-                                    <Border Width="80" Height="80" Margin="4" Background="White" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="12" Cursor="Hand" Tag="model|https://replicate.com" ToolTip="Replicate — запуск моделей через API">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Image Width="32" Height="32" Margin="0,0,0,4">
-                                                <Image.Source><BitmapImage UriSource="https://www.google.com/s2/favicons?domain=replicate.com&amp;sz=64"/></Image.Source>
-                                            </Image>
-                                            <TextBlock Text="Replicate" TextAlignment="Center" FontSize="10" Foreground="#4A4A4A" FontWeight="Medium"/>
-                                        </StackPanel>
-                                    </Border>
-                                    <Border Width="80" Height="80" Margin="4" Background="White" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="12" Cursor="Hand" Tag="model|https://tfhub.dev" ToolTip="TensorFlow Hub — модели от Google">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Image Width="32" Height="32" Margin="0,0,0,4">
-                                                <Image.Source><BitmapImage UriSource="https://www.google.com/s2/favicons?domain=tfhub.dev&amp;sz=64"/></Image.Source>
-                                            </Image>
-                                            <TextBlock Text="TensorFlow" TextAlignment="Center" FontSize="10" Foreground="#4A4A4A" FontWeight="Medium"/>
-                                        </StackPanel>
-                                    </Border>
-                                    <Border Width="80" Height="80" Margin="4" Background="White" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="12" Cursor="Hand" Tag="model|https://pytorch.org/hub" ToolTip="PyTorch Hub — модели от Meta">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Image Width="32" Height="32" Margin="0,0,0,4">
-                                                <Image.Source><BitmapImage UriSource="https://www.google.com/s2/favicons?domain=pytorch.org&amp;sz=64"/></Image.Source>
-                                            </Image>
-                                            <TextBlock Text="PyTorch" TextAlignment="Center" FontSize="10" Foreground="#4A4A4A" FontWeight="Medium"/>
-                                        </StackPanel>
-                                    </Border>
-                                </WrapPanel>
+                                <WrapPanel x:Name="ModelTilesPanel" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </ScrollViewer>
                         </StackPanel>
                     </Border>
@@ -886,73 +705,7 @@
                                        HorizontalAlignment="Center" 
                                        Opacity="0.8"/>
                             <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="200" HorizontalScrollBarVisibility="Disabled">
-                                <WrapPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                    <!-- 8 карточек AI генераторов -->
-                                    <Border Width="80" Height="80" Margin="4" Background="White" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="12" Cursor="Hand" Tag="media|https://www.sberbank.ru/ru/person/kandinsky" ToolTip="Kandinsky — AI генератор от Сбера">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Image Width="32" Height="32" Margin="0,0,0,4">
-                                                <Image.Source><BitmapImage UriSource="https://www.google.com/s2/favicons?domain=sberbank.ru&amp;sz=64"/></Image.Source>
-                                            </Image>
-                                            <TextBlock Text="Kandinsky" TextAlignment="Center" FontSize="10" Foreground="#4A4A4A" FontWeight="Medium"/>
-                                        </StackPanel>
-                                    </Border>
-                                    <Border Width="80" Height="80" Margin="4" Background="White" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="12" Cursor="Hand" Tag="media|https://leonardo.ai" ToolTip="Leonardo — генератор изображений">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Image Width="32" Height="32" Margin="0,0,0,4">
-                                                <Image.Source><BitmapImage UriSource="https://www.google.com/s2/favicons?domain=leonardo.ai&amp;sz=64"/></Image.Source>
-                                            </Image>
-                                            <TextBlock Text="Leonardo" TextAlignment="Center" FontSize="10" Foreground="#4A4A4A" FontWeight="Medium"/>
-                                        </StackPanel>
-                                    </Border>
-                                    <Border Width="80" Height="80" Margin="4" Background="White" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="12" Cursor="Hand" Tag="media|https://suno.com" ToolTip="Suno — AI генератор музыки">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Image Width="32" Height="32" Margin="0,0,0,4">
-                                                <Image.Source><BitmapImage UriSource="https://www.google.com/s2/favicons?domain=suno.com&amp;sz=64"/></Image.Source>
-                                            </Image>
-                                            <TextBlock Text="Suno" TextAlignment="Center" FontSize="10" Foreground="#4A4A4A" FontWeight="Medium"/>
-                                        </StackPanel>
-                                    </Border>
-                                    <Border Width="80" Height="80" Margin="4" Background="White" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="12" Cursor="Hand" Tag="media|https://www.craiyon.com" ToolTip="Craiyon — простой генератор (бесплатно)">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Image Width="32" Height="32" Margin="0,0,0,4">
-                                                <Image.Source><BitmapImage UriSource="https://www.google.com/s2/favicons?domain=craiyon.com&amp;sz=64"/></Image.Source>
-                                            </Image>
-                                            <TextBlock Text="Craiyon" TextAlignment="Center" FontSize="10" Foreground="#4A4A4A" FontWeight="Medium"/>
-                                        </StackPanel>
-                                    </Border>
-                                    <Border Width="80" Height="80" Margin="4" Background="White" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="12" Cursor="Hand" Tag="media|https://playgroundai.com" ToolTip="Playground AI — 500 изображений/день">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Image Width="32" Height="32" Margin="0,0,0,4">
-                                                <Image.Source><BitmapImage UriSource="https://www.google.com/s2/favicons?domain=playgroundai.com&amp;sz=64"/></Image.Source>
-                                            </Image>
-                                            <TextBlock Text="Playground" TextAlignment="Center" FontSize="10" Foreground="#4A4A4A" FontWeight="Medium"/>
-                                        </StackPanel>
-                                    </Border>
-                                    <Border Width="80" Height="80" Margin="4" Background="White" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="12" Cursor="Hand" Tag="media|https://www.udio.com" ToolTip="Udio — AI генератор музыки">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Image Width="32" Height="32" Margin="0,0,0,4">
-                                                <Image.Source><BitmapImage UriSource="https://www.google.com/s2/favicons?domain=udio.com&amp;sz=64"/></Image.Source>
-                                            </Image>
-                                            <TextBlock Text="Udio" TextAlignment="Center" FontSize="10" Foreground="#4A4A4A" FontWeight="Medium"/>
-                                        </StackPanel>
-                                    </Border>
-                                    <Border Width="80" Height="80" Margin="4" Background="White" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="12" Cursor="Hand" Tag="media|https://runwayml.com" ToolTip="Runway ML — AI генератор видео">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Image Width="32" Height="32" Margin="0,0,0,4">
-                                                <Image.Source><BitmapImage UriSource="https://www.google.com/s2/favicons?domain=runwayml.com&amp;sz=64"/></Image.Source>
-                                            </Image>
-                                            <TextBlock Text="Runway" TextAlignment="Center" FontSize="10" Foreground="#4A4A4A" FontWeight="Medium"/>
-                                        </StackPanel>
-                                    </Border>
-                                    <Border Width="80" Height="80" Margin="4" Background="White" BorderBrush="#E5E0D8" BorderThickness="1" CornerRadius="12" Cursor="Hand" Tag="media|https://pika.art" ToolTip="Pika — AI генератор видео">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Image Width="32" Height="32" Margin="0,0,0,4">
-                                                <Image.Source><BitmapImage UriSource="https://www.google.com/s2/favicons?domain=pika.art&amp;sz=64"/></Image.Source>
-                                            </Image>
-                                            <TextBlock Text="Pika" TextAlignment="Center" FontSize="10" Foreground="#4A4A4A" FontWeight="Medium"/>
-                                        </StackPanel>
-                                    </Border>
-                                </WrapPanel>
+                                <WrapPanel x:Name="MediaTilesPanel" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </ScrollViewer>
                         </StackPanel>
                     </Border>
