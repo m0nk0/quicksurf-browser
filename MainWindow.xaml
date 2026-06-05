@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         xmlns:models="clr-namespace:QuickSurfBrowser.Models"
+        xmlns:controls="clr-namespace:QuickSurfBrowser.Controls"
         Title="QuickSurf" 
         Height="700" 
         Width="1100"
@@ -20,7 +21,6 @@
         <SolidColorBrush x:Key="TextBrush" Color="#4A4A4A"/>
         <SolidColorBrush x:Key="BorderBrush" Color="#E5E0D8"/>
         
-        <!-- Стили кнопок и элементов -->
         <Style x:Key="NavButtonStyle" TargetType="Button">
             <Setter Property="Width" Value="40"/>
             <Setter Property="Height" Value="40"/>
@@ -109,6 +109,7 @@
 
     <Grid x:Name="RootGrid">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
@@ -260,14 +261,17 @@
             </Grid>
         </StackPanel>
 
-        <!-- WebView2 (браузер) - стандартное меню работает -->
-        <Border Grid.Row="1" Grid.Column="0" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+        <!-- Панель избранного (узкая, всегда видна) -->
+        <controls:BookmarksBar x:Name="BookmarksBarControl" Grid.Row="1" Grid.ColumnSpan="2"/>
+
+        <!-- WebView2 (браузер) -->
+        <Border Grid.Row="2" Grid.Column="0" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
             <wv2:WebView2 x:Name="WebView" DefaultBackgroundColor="White"/>
         </Border>
 
         <!-- Панель истории -->
         <Border x:Name="HistoryPanel" 
-                Grid.Row="1" 
+                Grid.Row="2" 
                 Grid.Column="1" 
                 Width="400" 
                 Background="White" 
@@ -349,7 +353,7 @@
 
         <!-- AI Sidebar -->
         <Border x:Name="AISidebar" 
-                Grid.Row="1" 
+                Grid.Row="2" 
                 Grid.Column="1" 
                 Width="400" 
                 Background="White" 
@@ -463,7 +467,7 @@
 
         <!-- СТАРТОВАЯ СТРАНИЦА -->
         <Grid x:Name="StartPageContainer" 
-              Grid.Row="1" 
+              Grid.Row="2" 
               Grid.ColumnSpan="2" 
               Background="White" 
               Visibility="Visible" 
@@ -545,7 +549,7 @@
 
             <!-- Контент стартовой страницы -->
             <DockPanel Margin="20,90,20,20" LastChildFill="True">
-                <!-- Панель "Избранное" -->
+                <!-- Панель "Избранное" (крупные плитки, только на стартовой) -->
                 <Border DockPanel.Dock="Top" 
                         Height="110" 
                         Margin="0,0,0,15" 
@@ -714,7 +718,7 @@
         </Grid>
 
         <!-- Скрытый WebView2 для AI -->
-        <Grid Grid.Row="1" Grid.Column="0" Width="1" Height="1"
+        <Grid Grid.Row="2" Grid.Column="0" Width="1" Height="1"
               HorizontalAlignment="Left" VerticalAlignment="Top"
               Margin="-1000,-1000,0,0"
               IsHitTestVisible="False">

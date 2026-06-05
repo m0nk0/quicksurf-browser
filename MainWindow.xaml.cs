@@ -92,6 +92,12 @@ namespace QuickSurfBrowser
                 };
             }
             
+            // Настройка узкой панели избранного
+            BookmarksBarControl.SetBookmarks(_tiles.Bookmarks);
+            BookmarksBarControl.BookmarkClicked += NavigateToBookmark;
+            BookmarksBarControl.AddCurrentPageRequested += AddCurrentPageToBookmarks;
+            BookmarksBarControl.BookmarkRemoved += RemoveBookmark;
+            
             _tabs.CreateNewTab("Старт", "");
             ShowStartPage();
             
@@ -111,6 +117,10 @@ namespace QuickSurfBrowser
                 _tabs.SetCurrentUrl(url);
                 if (!string.IsNullOrWhiteSpace(title))
                     _tabs.SetCurrentTitle(title);
+                
+                _tiles.IncrementVisitCount(url);
+                _tiles.SortTilesByVisitCount();
+                RenderTiles();
             }
             _history.Add(url, title);
         }
@@ -187,14 +197,56 @@ namespace QuickSurfBrowser
             ShowStartPage();
         }
 
+        private void AddCurrentPageToBookmarks()
+        {
+            if (_tabs.SelectedTab != null && !string.IsNullOrEmpty(_tabs.SelectedTab.Url))
+            {
+                var url = _tabs.SelectedTab.Url;
+                var title = _tabs.SelectedTab.Title;
+                
+                if (url != "about:blank" && !url.StartsWith("https://www.google.com/search"))
+                {
+                    _tiles.AddBookmark(title, url);
+                    BookmarksBarControl.RefreshBookmarks();
+                    RenderTiles();
+                }
+            }
+        }
+        
+        private void NavigateToBookmark(string url)
+        {
+            if (!string.IsNullOrWhiteSpace(url))
+            {
+                ShowBrowser();
+                Navigate(url);
+            }
+        }
+        
+        private void RemoveBookmark(Bookmark bookmark)
+        {
+            _tiles.RemoveBookmark(bookmark);
+            BookmarksBarControl.RefreshBookmarks();
+            
+            // Также удаляем из крупных плиток, если есть
+            var tile = _tiles.Tiles.FirstOrDefault(t => t.Url == bookmark.Url);
+            if (tile != null)
+            {
+                _tiles.RemoveTile(tile);
+                RenderTiles();
+            }
+        }
+
         public void NavigateInNewTab(string url)
         {
             if (string.IsNullOrWhiteSpace(url)) return;
             
-            _tabs.CreateNewTab("Новая вкладка", url);
-            ShowBrowser();
-            _browser.Navigate(url);
-            UrlBox.Text = url;
+            Dispatcher.Invoke(() =>
+            {
+                _tabs.CreateNewTab("Новая вкладка", url);
+                ShowBrowser();
+                _browser.Navigate(url);
+                UrlBox.Text = url;
+            });
         }
 
         protected override void OnKeyDown(KeyEventArgs e)
@@ -288,7 +340,8 @@ namespace QuickSurfBrowser
         private void RenderTiles()
         {
             TilesWrapPanel.Children.Clear();
-            foreach (var tile in _tiles.Tiles)
+            var sortedTiles = _tiles.Tiles.OrderByDescending(t => t.VisitCount).ThenByDescending(t => t.LastVisit).ToList();
+            foreach (var tile in sortedTiles)
                 TilesWrapPanel.Children.Add(CreateTile(tile.Title, tile.Url, true));
         }
 
@@ -304,37 +357,62 @@ namespace QuickSurfBrowser
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(12),
                 Cursor = Cursors.Hand,
-                ToolTip = url
+                ToolTip = url,
+                Tag = url
             };
+            
             var stack = new StackPanel
             {
                 Orientation = Orientation.Vertical,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             };
+            
             var img = new Image { Width = 32, Height = 32, Margin = new Thickness(0, 0, 0, 4) };
-            try { img.Source = new BitmapImage(new Uri($"https://www.google.com/s2/favicons?domain={new Uri(url).Host}&sz=64")); } catch { }
-            var text = new TextBlock { Text = title, TextAlignment = TextAlignment.Center, FontSize = 10, FontWeight = FontWeights.Medium };
+            try 
+            { 
+                img.Source = new BitmapImage(new Uri($"https://www.google.com/s2/favicons?domain={new Uri(url).Host}&sz=64")); 
+            } 
+            catch { }
+            
+            var text = new TextBlock 
+            { 
+                Text = title, 
+                TextAlignment = TextAlignment.Center, 
+                FontSize = 10, 
+                FontWeight = FontWeights.Medium 
+            };
+            
             stack.Children.Add(img);
             stack.Children.Add(text);
             border.Child = stack;
+            
             border.MouseLeftButtonUp += (s, e) => { ShowBrowser(); Navigate(url); };
+            
             if (canDelete)
             {
                 border.MouseRightButtonUp += (s, e) =>
                 {
-                    if (MessageBox.Show($"Удалить \"{title}\"?", "Подтверждение", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                    if (MessageBox.Show($"Удалить \"{title}\" из избранного?", "Подтверждение", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
                     {
                         var tileToRemove = _tiles.Tiles.FirstOrDefault(t => t.Url == url);
                         if (tileToRemove != null)
                         {
                             _tiles.RemoveTile(tileToRemove);
+                            // Также удаляем из узкой панели
+                            var bookmark = _tiles.Bookmarks.FirstOrDefault(b => b.Url == url);
+                            if (bookmark != null)
+                            {
+                                _tiles.RemoveBookmark(bookmark);
+                                BookmarksBarControl.RefreshBookmarks();
+                            }
                             RenderTiles();
                         }
                     }
                     e.Handled = true;
                 };
             }
+            
             return border;
         }
 
@@ -353,7 +431,7 @@ namespace QuickSurfBrowser
                 ("Copilot", "https://copilot.microsoft.com")
             };
             foreach (var tile in tiles)
-                AITilesPanel.Children.Add(CreateTile(tile.name, tile.url, false));
+                AITilesPanel.Children.Add(CreateStaticTile(tile.name, tile.url));
         }
 
         private void SetupModelTiles()
@@ -371,7 +449,7 @@ namespace QuickSurfBrowser
                 ("PyTorch", "https://pytorch.org/hub")
             };
             foreach (var tile in tiles)
-                ModelTilesPanel.Children.Add(CreateTile(tile.name, tile.url, false));
+                ModelTilesPanel.Children.Add(CreateStaticTile(tile.name, tile.url));
         }
 
         private void SetupMediaTiles()
@@ -389,7 +467,54 @@ namespace QuickSurfBrowser
                 ("Pika", "https://pika.art")
             };
             foreach (var tile in tiles)
-                MediaTilesPanel.Children.Add(CreateTile(tile.name, tile.url, false));
+                MediaTilesPanel.Children.Add(CreateStaticTile(tile.name, tile.url));
+        }
+
+        private Border CreateStaticTile(string title, string url)
+        {
+            var border = new Border
+            {
+                Width = 80,
+                Height = 80,
+                Margin = new Thickness(5),
+                Background = Brushes.White,
+                BorderBrush = (Brush)FindResource("BorderBrush"),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(12),
+                Cursor = Cursors.Hand,
+                ToolTip = url,
+                Tag = url
+            };
+            
+            var stack = new StackPanel
+            {
+                Orientation = Orientation.Vertical,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            
+            var img = new Image { Width = 32, Height = 32, Margin = new Thickness(0, 0, 0, 4) };
+            try 
+            { 
+                img.Source = new BitmapImage(new Uri($"https://www.google.com/s2/favicons?domain={new Uri(url).Host}&sz=64")); 
+            } 
+            catch { }
+            
+            var text = new TextBlock 
+            { 
+                Text = title, 
+                TextAlignment = TextAlignment.Center, 
+                FontSize = 10, 
+                FontWeight = FontWeights.Medium 
+            };
+            
+            stack.Children.Add(img);
+            stack.Children.Add(text);
+            border.Child = stack;
+            
+            border.MouseLeftButtonUp += (s, e) => { ShowBrowser(); Navigate(url); };
+            
+            return border;
         }
 
         private T FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
@@ -552,7 +677,7 @@ namespace QuickSurfBrowser
 
         private void BtnSaveContext_Click(object s, RoutedEventArgs e)
         {
-            var provider = (AIProviderComboBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Perplexity";
+            var provider = (AIProviderComboBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Алиса (Яндекс)";
             _chatContext.SetProvider(provider);
             UpdateContextStatus();
             MessageBox.Show($"Контекст сохранён для {provider}", "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -611,7 +736,9 @@ namespace QuickSurfBrowser
             if (!string.IsNullOrEmpty(title) && !string.IsNullOrEmpty(url))
             {
                 _tiles.AddTile(title, url);
+                _tiles.AddBookmark(title, url);
                 RenderTiles();
+                BookmarksBarControl.RefreshBookmarks();
             }
             AddTileForm.Visibility = Visibility.Collapsed;
             NewTileTitle.Text = "";
