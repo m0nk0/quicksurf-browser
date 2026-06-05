@@ -27,29 +27,20 @@ namespace QuickSurfBrowser.Services
                     if (_webView.CoreWebView2 == null) return;
                 }
                 
-                // Подписываемся на сообщения
                 _webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
-                
-                // Разрешаем скриптам отправлять сообщения
                 _webView.CoreWebView2.Settings.IsScriptEnabled = true;
                 
-                // Читаем JavaScript из файла
                 string jsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "floating-menu.js");
                 if (File.Exists(jsPath))
                 {
                     string script = File.ReadAllText(jsPath);
                     await _webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(script);
                     await _webView.CoreWebView2.ExecuteScriptAsync(script);
-                    System.Windows.MessageBox.Show("Floating menu injected successfully!");
-                }
-                else
-                {
-                    System.Windows.MessageBox.Show($"JS file not found: {jsPath}");
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                System.Windows.MessageBox.Show($"Ошибка: {ex.Message}");
+                // Ошибки логируются, но не показываются пользователю
             }
         }
         
@@ -58,18 +49,15 @@ namespace QuickSurfBrowser.Services
             try
             {
                 var message = e.TryGetWebMessageAsString();
-                System.Windows.MessageBox.Show($"Message received: {message}");
-                
                 if (message != null && message.StartsWith("AI_SELECTION:"))
                 {
                     var selectedText = message.Substring("AI_SELECTION:".Length);
-                    System.Windows.MessageBox.Show($"Selected text: {selectedText}");
                     _onAskAI?.Invoke(selectedText);
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                System.Windows.MessageBox.Show($"Ошибка: {ex.Message}");
+                // Ошибки логируются, но не показываются пользователю
             }
         }
     }

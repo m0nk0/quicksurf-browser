@@ -174,15 +174,6 @@ namespace QuickSurfBrowser
             ShowStartPage();
         }
 
-        // Тестовая кнопка для отладки GitHub
-        private void BtnTestGH_Click(object sender, RoutedEventArgs e)
-        {
-            string testUrl = "https://github.com/huggingface/transformers";
-            System.Diagnostics.Debug.WriteLine($"Test button clicked: {testUrl}");
-            ShowBrowser();
-            Navigate(testUrl);
-        }
-
         protected override void OnKeyDown(KeyEventArgs e)
         {
             base.OnKeyDown(e);
@@ -610,103 +601,97 @@ namespace QuickSurfBrowser
         }
 
         private async Task LoadGitHubTrendingAsync()
-{
-    try
-    {
-        var repos = await _gitHub.GetTrendingAIReposAsync(8);
-        await Dispatcher.InvokeAsync(() =>
         {
-            GitHubTilesPanel.Children.Clear();
-            foreach (var repo in repos)
+            try
             {
-                GitHubTilesPanel.Children.Add(CreateGitHubTile(repo));
+                var repos = await _gitHub.GetTrendingAIReposAsync(8);
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    GitHubTilesPanel.Children.Clear();
+                    foreach (var repo in repos)
+                    {
+                        GitHubTilesPanel.Children.Add(CreateGitHubTile(repo));
+                    }
+                    GitHubUpdateTime.Text = $"Обновлено: {DateTime.Now:HH:mm}";
+                });
             }
-            GitHubUpdateTime.Text = $"Обновлено: {DateTime.Now:HH:mm}";
-        });
-    }
-    catch (Exception ex)
-    {
-        await Dispatcher.InvokeAsync(() =>
-        {
-            GitHubUpdateTime.Text = "Ошибка загрузки";
-        });
-        System.Diagnostics.Debug.WriteLine($"GitHub load error: {ex.Message}");
-    }
-}
+            catch (Exception)
+            {
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    GitHubUpdateTime.Text = "Ошибка загрузки";
+                });
+            }
+        }
+
         private Border CreateGitHubTile(GitHubRepo repo)
-{
-    var border = new Border
-    {
-        Width = 240,
-        MinHeight = 65,
-        Margin = new Thickness(8, 4, 8, 4),
-        Background = Brushes.White,
-        BorderBrush = (Brush)FindResource("BorderBrush"),
-        BorderThickness = new Thickness(1),
-        CornerRadius = new CornerRadius(10),
-        Cursor = Cursors.Hand,
-        Tag = repo.HtmlUrl,
-        VerticalAlignment = VerticalAlignment.Center
-    };
-    
-    var stack = new StackPanel
-    {
-        Margin = new Thickness(12, 0, 12, 0),
-        VerticalAlignment = VerticalAlignment.Center
-    };
-    
-    var nameBlock = new TextBlock
-    {
-        Text = repo.FullName,
-        FontSize = 13,
-        FontWeight = FontWeights.Bold,
-        Foreground = System.Windows.Media.Brushes.Black,
-        TextTrimming = TextTrimming.CharacterEllipsis,
-        MaxWidth = 216
-    };
-    
-    var statsBlock = new TextBlock
-    {
-        Text = $"⭐ {FormatNumber(repo.StargazersCount)}    🍴 {FormatNumber(repo.ForksCount)}",
-        FontSize = 12,
-        FontWeight = FontWeights.Bold,
-        Foreground = System.Windows.Media.Brushes.Black,
-        Opacity = 0.75,
-        Margin = new Thickness(0, 2, 0, 0)
-    };
-    
-    var langBlock = new TextBlock
-    {
-        Text = repo.Language ?? "N/A",
-        FontSize = 10,
-        FontWeight = FontWeights.Bold,
-        Foreground = System.Windows.Media.Brushes.Gray,
-        Margin = new Thickness(0, 1, 0, 0)
-    };
-    
-    stack.Children.Add(nameBlock);
-    stack.Children.Add(statsBlock);
-    stack.Children.Add(langBlock);
-    border.Child = stack;
-    
-    border.MouseLeftButtonUp += (s, e) => 
-    { 
-        if (!string.IsNullOrWhiteSpace(repo.HtmlUrl))
         {
-            ShowBrowser();
-            Navigate(repo.HtmlUrl);
+            var border = new Border
+            {
+                Width = 240,
+                MinHeight = 65,
+                Margin = new Thickness(8, 4, 8, 4),
+                Background = Brushes.White,
+                BorderBrush = (Brush)FindResource("BorderBrush"),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(10),
+                Cursor = Cursors.Hand,
+                Tag = repo.HtmlUrl,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            
+            var stack = new StackPanel
+            {
+                Margin = new Thickness(12, 0, 12, 0),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            
+            var nameBlock = new TextBlock
+            {
+                Text = repo.FullName,
+                FontSize = 13,
+                FontWeight = FontWeights.Bold,
+                Foreground = System.Windows.Media.Brushes.Black,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                MaxWidth = 216
+            };
+            
+            var statsBlock = new TextBlock
+            {
+                Text = $"⭐ {FormatNumber(repo.StargazersCount)}    🍴 {FormatNumber(repo.ForksCount)}",
+                FontSize = 12,
+                FontWeight = FontWeights.Bold,
+                Foreground = System.Windows.Media.Brushes.Black,
+                Opacity = 0.75,
+                Margin = new Thickness(0, 2, 0, 0)
+            };
+            
+            var langBlock = new TextBlock
+            {
+                Text = repo.Language ?? "N/A",
+                FontSize = 10,
+                FontWeight = FontWeights.Bold,
+                Foreground = System.Windows.Media.Brushes.Gray,
+                Margin = new Thickness(0, 1, 0, 0)
+            };
+            
+            stack.Children.Add(nameBlock);
+            stack.Children.Add(statsBlock);
+            stack.Children.Add(langBlock);
+            border.Child = stack;
+            
+            border.MouseLeftButtonUp += (s, e) => 
+            { 
+                string url = !string.IsNullOrWhiteSpace(repo.HtmlUrl) 
+                    ? repo.HtmlUrl 
+                    : $"https://github.com/{repo.FullName}";
+                ShowBrowser();
+                Navigate(url);
+            };
+            
+            return border;
         }
-        else
-        {
-            MessageBox.Show($"URL не найден для {repo.FullName}\nИспользуем fallback URL", "Ошибка");
-            string fallbackUrl = $"https://github.com/{repo.FullName}";
-            ShowBrowser();
-            Navigate(fallbackUrl);
-        }
-    };
-    
-    return border;
-}
+
         private string FormatNumber(int num)
         {
             if (num >= 1000)

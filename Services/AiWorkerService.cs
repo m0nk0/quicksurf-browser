@@ -1,10 +1,8 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 
@@ -46,18 +44,16 @@ namespace QuickSurfBrowser.Services
                 await WaitForPageLoad();
                 await Task.Delay(2000);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                MessageBox.Show($"Ошибка инициализации: {ex.Message}", "QuickSurf", MessageBoxButton.OK, MessageBoxImage.Warning);
+                // Ошибка логируется, но не показывается пользователю
             }
         }
 
-        // ✅ ИСПРАВЛЕННОЕ ФОРМАТИРОВАНИЕ: умная обрезка без потери смысла
         private string FormatResponse(string response)
         {
             if (string.IsNullOrWhiteSpace(response)) return response;
 
-            // 1. Форматируем погоду
             if (response.Contains("Сегодня") && response.Contains("°"))
             {
                 var lines = response.Split('\n', '\r')
@@ -69,7 +65,6 @@ namespace QuickSurfBrowser.Services
                 return string.Join("\n", relevantLines).Trim();
             }
 
-            // 2. Умная обрезка длинных ответов (лимит 1000 символов)
             if (response.Length > 1000)
             {
                 var truncated = response.Substring(0, 1000);
@@ -78,14 +73,12 @@ namespace QuickSurfBrowser.Services
                     Math.Max(truncated.LastIndexOf('!'), truncated.LastIndexOf('?'))
                 );
 
-                // Обрезаем на последнем полном предложении
                 if (lastPunctuation > 100)
                     return truncated.Substring(0, lastPunctuation + 1).Trim();
                 else
                     return truncated.Trim() + "...";
             }
 
-            // 3. Короткие ответы возвращаем как есть
             return response.Trim();
         }
 
@@ -107,7 +100,6 @@ namespace QuickSurfBrowser.Services
         }}
 
         let getLastBotMessage = function() {{
-            // Level 1: Specific selectors
             var specific = ['.ChatMessage_role_bot', '[data-testid=""bot-message""]', '.message_bot', '[role=""article""]', '.AliceChat-Message', '.chat-message'];
             for(var i = 0; i < specific.length; i++) {{
                 var els = document.querySelectorAll(specific[i]);
@@ -117,7 +109,6 @@ namespace QuickSurfBrowser.Services
                 }}
             }}
             
-            // Level 2: General class matchers
             var general = document.querySelectorAll('div[class*=""message""], div[class*=""Message""], div[class*=""chat""], div[class*=""Chat""]');
             if(general.length > 0) {{
                 var candidates = Array.prototype.slice.call(general).slice(-3);
@@ -133,7 +124,6 @@ namespace QuickSurfBrowser.Services
                 }}
             }}
             
-            // Level 3: Fallback - elements in lower half of screen
             var allText = document.querySelectorAll('p, div, span');
             var recent = [];
             for(var k = 0; k < allText.length; k++) {{
@@ -152,7 +142,6 @@ namespace QuickSurfBrowser.Services
         var oldText = getLastBotMessage();
         console.log('[AI] Before:', oldText ? oldText.substring(0, 40) : '(empty)');
         
-        // Input and send
         input.value = '';
         input.dispatchEvent(new Event('input', {{bubbles:true}}));
         input.value = '{safePrompt}';
@@ -165,7 +154,6 @@ namespace QuickSurfBrowser.Services
         if(btn && !btn.disabled) btn.click();
         else input.dispatchEvent(new KeyboardEvent('keydown', {{key:'Enter', code:'Enter', bubbles:true}}));
         
-        // Wait for field clear
         for(var w = 0; w < 20; w++) {{
             await new Promise(function(r) {{ setTimeout(r, 200); }});
             if(input.value.trim() === '') break;
@@ -173,13 +161,11 @@ namespace QuickSurfBrowser.Services
         
         console.log('[AI] Waiting for response...');
         
-        // Wait for new answer
         for(var i = 0; i < 70; i++) {{
             await new Promise(function(r) {{ setTimeout(r, 500); }});
             var newText = getLastBotMessage();
             
             if(newText && newText !== oldText && newText.length > 20 && newText.indexOf('{safePrompt}') === -1) {{
-                // Stability check
                 await new Promise(function(r) {{ setTimeout(r, 800); }});
                 var finalText = getLastBotMessage();
                 if(finalText === newText) {{

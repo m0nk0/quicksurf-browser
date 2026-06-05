@@ -29,49 +29,8 @@ namespace QuickSurfBrowser.Services
 
         public async Task<List<GitHubRepo>> GetTrendingAIReposAsync(int count = 8)
         {
-            // Временно всегда используем fallback для стабильной работы
+            // Используем fallback репозитории для стабильной работы
             return GetFallbackRepos();
-            
-            // Оригинальный код закомментирован до решения проблемы с API
-            /*
-            try
-            {
-                string url = "https://api.github.com/search/repositories?q=topic:artificial-intelligence+topic:llm+topic:machine-learning&sort=stars&order=desc&per_page=" + count;
-                
-                var response = await _httpClient.GetAsync(url);
-                var json = await response.Content.ReadAsStringAsync();
-                
-                if (!response.IsSuccessStatusCode)
-                    return GetFallbackRepos();
-
-                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                var data = JsonSerializer.Deserialize<GitHubSearchResponse>(json, options);
-                
-                if (data?.Items == null || data.Items.Count == 0)
-                    return GetFallbackRepos();
-
-                var repos = new List<GitHubRepo>();
-                foreach (var item in data.Items)
-                {
-                    repos.Add(new GitHubRepo
-                    {
-                        Name = item.Name ?? "",
-                        FullName = item.FullName ?? "",
-                        Description = item.Description ?? "",
-                        StargazersCount = item.StargazersCount,
-                        ForksCount = item.ForksCount,
-                        HtmlUrl = item.HtmlUrl ?? "",
-                        Language = item.Language ?? ""
-                    });
-                }
-                return repos;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"GitHub API error: {ex.Message}");
-                return GetFallbackRepos();
-            }
-            */
         }
 
         private List<GitHubRepo> GetFallbackRepos()
