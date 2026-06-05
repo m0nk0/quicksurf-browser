@@ -105,6 +105,96 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- Стиль для ComboBox поиска -->
+        <Style x:Key="SearchComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="Width" Value="140"/>
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,10,0"/>
+            <Setter Property="Background" Value="{StaticResource PrimaryBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <ToggleButton x:Name="ToggleButton" 
+                                          Grid.ColumnSpan="2"
+                                          Background="{TemplateBinding Background}"
+                                          BorderBrush="{TemplateBinding BorderBrush}"
+                                          BorderThickness="{TemplateBinding BorderThickness}"
+                                          Focusable="False"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                          ClickMode="Press">
+                                <ToggleButton.Style>
+                                    <Style TargetType="ToggleButton">
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ToggleButton">
+                                                    <Border Background="{TemplateBinding Background}"
+                                                            BorderBrush="{TemplateBinding BorderBrush}"
+                                                            BorderThickness="{TemplateBinding BorderThickness}">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <ContentPresenter Grid.Column="0" 
+                                                                              HorizontalAlignment="Left" 
+                                                                              VerticalAlignment="Center"
+                                                                              Margin="8,0,0,0"/>
+                                                            <TextBlock Grid.Column="1" 
+                                                                       Text="▼" 
+                                                                       FontSize="10" 
+                                                                       Foreground="White"
+                                                                       Margin="0,0,8,0"
+                                                                       VerticalAlignment="Center"/>
+                                                        </Grid>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </ToggleButton.Style>
+                            </ToggleButton>
+                            <ContentPresenter x:Name="ContentPresenter" 
+                                              Grid.ColumnSpan="2"
+                                              Content="{TemplateBinding SelectionBoxItem}"
+                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                              Margin="8,0,8,0"
+                                              IsHitTestVisible="False"
+                                              VerticalAlignment="Center"/>
+                            <Popup x:Name="Popup"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   Placement="Bottom"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   PopupAnimation="Slide">
+                                <Border Background="White" 
+                                        BorderBrush="{StaticResource PrimaryBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="4"
+                                        MaxHeight="200">
+                                    <ScrollViewer>
+                                        <ItemsPresenter x:Name="ItemsPresenter"/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#E07A2E"/>
+                    <Setter Property="BorderBrush" Value="#E07A2E"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
     </Window.Resources>
 
     <Grid x:Name="RootGrid">
@@ -577,58 +667,66 @@
                 </Border>
 
                 <!-- Строка поиска -->
-                <Border DockPanel.Dock="Top" 
-                        Height="65" 
-                        Margin="0,0,0,20" 
-                        CornerRadius="12" 
-                        Padding="12" 
-                        Background="White" 
-                        HorizontalAlignment="Center" 
-                        Width="600">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <ComboBox x:Name="SearchEngineComboBox" 
-                                  Grid.Column="0" 
-                                  Width="140" 
-                                  Height="38" 
-                                  FontSize="13" 
-                                  VerticalContentAlignment="Center" 
-                                  Margin="0,0,10,0">
-                            <ComboBoxItem Content="🔍 Google" IsSelected="True"/>
-                            <ComboBoxItem Content="🤖 Perplexity"/>
-                            <ComboBoxItem Content="🇷🇺 Yandex"/>
-                            <ComboBoxItem Content="🦆 DuckDuckGo"/>
-                            <ComboBoxItem Content="🤖 Bing AI"/>
-                        </ComboBox>
-                        <TextBox x:Name="SearchBox" 
-                                 Grid.Column="1" 
-                                 Height="38" 
-                                 FontSize="14" 
-                                 VerticalContentAlignment="Center" 
-                                 Padding="12,0" 
-                                 BorderBrush="{StaticResource BorderBrush}" 
-                                 BorderThickness="1" 
-                                 KeyDown="SearchBox_KeyDown" 
-                                 GotFocus="SearchBox_GotFocus" 
-                                 LostFocus="SearchBox_LostFocus" 
-                                 Text="Введите запрос..."/>
-                        <Button Content="🔍" 
-                                Grid.Column="2" 
-                                Width="45" 
-                                Height="38" 
-                                Margin="10,0,0,0" 
-                                Background="{StaticResource PrimaryBrush}" 
-                                Foreground="White" 
-                                BorderThickness="0" 
-                                FontSize="18" 
-                                Cursor="Hand" 
-                                Click="BtnSearch_Click"/>
-                    </Grid>
-                </Border>
+                <!-- Строка поиска -->
+<!-- Строка поиска -->
+<Border DockPanel.Dock="Top" 
+        Height="65" 
+        Margin="0,0,0,20" 
+        CornerRadius="12" 
+        Padding="12" 
+        Background="White" 
+        HorizontalAlignment="Center" 
+        Width="600">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        
+        <ComboBox x:Name="SearchEngineComboBox" 
+                  Grid.Column="0" 
+                  Width="140" 
+                  Height="38" 
+                  FontSize="13" 
+                  VerticalContentAlignment="Center" 
+                  Margin="0,0,10,0">
+            <ComboBox.Background>
+                <SolidColorBrush Color="#FF8C42"/>
+            </ComboBox.Background>
+            <ComboBoxItem Content="🔍 Google" IsSelected="True" Background="White" Foreground="Black"/>
+            <ComboBoxItem Content="🤖 Perplexity" Background="White" Foreground="Black"/>
+            <ComboBoxItem Content="🇷🇺 Yandex" Background="White" Foreground="Black"/>
+            <ComboBoxItem Content="🦆 DuckDuckGo" Background="White" Foreground="Black"/>
+            <ComboBoxItem Content="🤖 Bing AI" Background="White" Foreground="Black"/>
+        </ComboBox>
+        
+        <TextBox x:Name="SearchBox" 
+                 Grid.Column="1" 
+                 Height="38" 
+                 FontSize="14" 
+                 VerticalContentAlignment="Center" 
+                 Padding="12,0" 
+                 BorderBrush="{StaticResource BorderBrush}" 
+                 BorderThickness="1" 
+                 KeyDown="SearchBox_KeyDown" 
+                 GotFocus="SearchBox_GotFocus" 
+                 LostFocus="SearchBox_LostFocus" 
+                 Text="Введите запрос..."/>
+        
+        <Button Content="🔍" 
+                Grid.Column="2" 
+                Width="45" 
+                Height="38" 
+                Margin="10,0,0,0" 
+                Background="{StaticResource PrimaryBrush}" 
+                Foreground="White" 
+                BorderThickness="0" 
+                FontSize="18" 
+                Cursor="Hand" 
+                Click="BtnSearch_Click"/>
+    </Grid>
+</Border>
 
                 <!-- СЕТКА ПАНЕЛЕЙ 2×2 -->
                 <Grid>

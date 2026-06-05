@@ -133,7 +133,7 @@ namespace QuickSurfBrowser
             _history.Add(url, title);
         }
 
-        private void OnTabSwitched(object sender, int index)
+        private void OnTabSwitched(object? sender, int index)
         {
             if (_tabs.SelectedTab != null)
             {
@@ -564,7 +564,7 @@ namespace QuickSurfBrowser
             return border;
         }
 
-        private T FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+        private T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
         {
             if (parent == null) return null;
             for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)

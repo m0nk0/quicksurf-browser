@@ -27,10 +27,9 @@ namespace QuickSurfBrowser.Services
             _httpClient.DefaultRequestHeaders.Add("Accept", "application/vnd.github.v3+json");
         }
 
-        public async Task<List<GitHubRepo>> GetTrendingAIReposAsync(int count = 8)
+       public Task<List<GitHubRepo>> GetTrendingAIReposAsync(int count = 8)
         {
-            // Используем fallback репозитории для стабильной работы
-            return GetFallbackRepos();
+            return Task.FromResult(GetFallbackRepos());
         }
 
         private List<GitHubRepo> GetFallbackRepos()
