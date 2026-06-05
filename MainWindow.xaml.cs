@@ -187,6 +187,16 @@ namespace QuickSurfBrowser
             ShowStartPage();
         }
 
+        public void NavigateInNewTab(string url)
+        {
+            if (string.IsNullOrWhiteSpace(url)) return;
+            
+            _tabs.CreateNewTab("Новая вкладка", url);
+            ShowBrowser();
+            _browser.Navigate(url);
+            UrlBox.Text = url;
+        }
+
         protected override void OnKeyDown(KeyEventArgs e)
         {
             base.OnKeyDown(e);
@@ -304,7 +314,7 @@ namespace QuickSurfBrowser
             };
             var img = new Image { Width = 32, Height = 32, Margin = new Thickness(0, 0, 0, 4) };
             try { img.Source = new BitmapImage(new Uri($"https://www.google.com/s2/favicons?domain={new Uri(url).Host}&sz=64")); } catch { }
-            var text = new TextBlock { Text = title, TextAlignment = TextAlignment.Center, FontSize = 12, FontWeight = FontWeights.Medium };
+            var text = new TextBlock { Text = title, TextAlignment = TextAlignment.Center, FontSize = 10, FontWeight = FontWeights.Medium };
             stack.Children.Add(img);
             stack.Children.Add(text);
             border.Child = stack;
@@ -643,7 +653,7 @@ namespace QuickSurfBrowser
             {
                 Width = 240,
                 MinHeight = 65,
-                Margin = new Thickness(8, 0, 8, 4),
+                Margin = new Thickness(8, 4, 8, 4),
                 Background = Brushes.White,
                 BorderBrush = (Brush)FindResource("BorderBrush"),
                 BorderThickness = new Thickness(1),
@@ -663,7 +673,7 @@ namespace QuickSurfBrowser
             {
                 Text = repo.FullName,
                 FontSize = 13,
-                FontWeight = FontWeights.Normal,
+                FontWeight = FontWeights.Bold,
                 Foreground = System.Windows.Media.Brushes.Black,
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 MaxWidth = 216
@@ -673,7 +683,7 @@ namespace QuickSurfBrowser
             {
                 Text = $"⭐ {FormatNumber(repo.StargazersCount)}    🍴 {FormatNumber(repo.ForksCount)}",
                 FontSize = 12,
-                FontWeight = FontWeights.Normal,
+                FontWeight = FontWeights.Bold,
                 Foreground = System.Windows.Media.Brushes.Black,
                 Opacity = 0.75,
                 Margin = new Thickness(0, 2, 0, 0)
@@ -683,7 +693,7 @@ namespace QuickSurfBrowser
             {
                 Text = repo.Language ?? "N/A",
                 FontSize = 10,
-                FontWeight = FontWeights.Normal,
+                FontWeight = FontWeights.Bold,
                 Foreground = System.Windows.Media.Brushes.Gray,
                 Margin = new Thickness(0, 1, 0, 0)
             };

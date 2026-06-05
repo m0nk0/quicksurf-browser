@@ -1,6 +1,6 @@
 using System;
 using System.Threading.Tasks;
-using System.Windows.Controls;
+using System.Windows;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 
@@ -24,12 +24,68 @@ namespace QuickSurfBrowser.Services
                 var env = await CoreWebView2Environment.CreateAsync();
                 await _webView.EnsureCoreWebView2Async(env);
                 
+                // 1. Обработка новых окон
+                _webView.CoreWebView2.NewWindowRequested += (s, e) =>
+                {
+                    e.Handled = true;
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        if (Application.Current.MainWindow is MainWindow mainWindow)
+                        {
+                            mainWindow.NavigateInNewTab(e.Uri);
+                        }
+                    });
+                };
+                
+                // 2. JavaScript для перехвата всех кликов по ссылкам
+                string script = @"
+                    (function() {
+                        document.addEventListener('click', function(e) {
+                            let target = e.target.closest('a');
+                            if (target && target.href) {
+                                let url = target.href;
+                                let isExternal = target.target === '_blank' || 
+                                                (url.indexOf(window.location.hostname) === -1);
+                                
+                                if (isExternal || target.target === '_blank') {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    window.chrome.webview.postMessage('OPEN_IN_NEW_TAB:' + url);
+                                }
+                            }
+                        });
+                    })();
+                ";
+                
+                await _webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(script);
+                await _webView.CoreWebView2.ExecuteScriptAsync(script);
+                
+                // 3. Обработка сообщений от JavaScript
+                _webView.CoreWebView2.WebMessageReceived += (s, e) =>
+                {
+                    var message = e.TryGetWebMessageAsString();
+                    if (message != null && message.StartsWith("OPEN_IN_NEW_TAB:"))
+                    {
+                        var url = message.Substring("OPEN_IN_NEW_TAB:".Length);
+                        Application.Current.Dispatcher.Invoke(() =>
+                        {
+                            if (Application.Current.MainWindow is MainWindow mainWindow)
+                            {
+                                mainWindow.NavigateInNewTab(url);
+                            }
+                        });
+                    }
+                };
+                
                 _webView.CoreWebView2.NavigationCompleted += (s, e) =>
                 {
                     string title = _webView.CoreWebView2.DocumentTitle;
                     string url = _webView.CoreWebView2.Source;
-                    if (string.IsNullOrWhiteSpace(title)) title = url; // Fallback
+                    if (string.IsNullOrWhiteSpace(title)) title = url;
                     _onNavigationCompleted?.Invoke(url, title);
+                    
+                    // Заново инжектируем скрипт после навигации
+                    _webView.CoreWebView2.ExecuteScriptAsync(script);
                 };
             }
             catch (Exception ex)
