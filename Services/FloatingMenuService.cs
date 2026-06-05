@@ -21,11 +21,7 @@ namespace QuickSurfBrowser.Services
         {
             try
             {
-                if (_webView.CoreWebView2 == null)
-                {
-                    await Task.Delay(1000);
-                    if (_webView.CoreWebView2 == null) return;
-                }
+                if (_webView.CoreWebView2 == null) return;
                 
                 _webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
                 _webView.CoreWebView2.Settings.IsScriptEnabled = true;
@@ -40,7 +36,7 @@ namespace QuickSurfBrowser.Services
             }
             catch (Exception)
             {
-                // Ошибки логируются, но не показываются пользователю
+                // Тихо
             }
         }
         
@@ -57,7 +53,7 @@ namespace QuickSurfBrowser.Services
             }
             catch (Exception)
             {
-                // Ошибки логируются, но не показываются пользователю
+                // Тихо
             }
         }
     }

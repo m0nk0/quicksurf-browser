@@ -74,10 +74,23 @@ namespace QuickSurfBrowser
             SetupMediaTiles();
             UpdateContextStatus();
             await _browser.InitializeAsync();
-            await _aiWorker.InitializeAsync();
             
-            await Task.Delay(500);
-            await _floatingMenuService.InitializeAsync();
+            // AI Worker в фоне (не блокируем UI)
+            _ = _aiWorker.InitializeAsync();
+            
+            // Безопасная инициализация плавающего меню
+            if (WebView.CoreWebView2 != null)
+            {
+                await _floatingMenuService.InitializeAsync();
+            }
+            else
+            {
+                WebView.CoreWebView2InitializationCompleted += async (s, ev) =>
+                {
+                    if (ev.IsSuccess)
+                        await _floatingMenuService.InitializeAsync();
+                };
+            }
             
             _tabs.CreateNewTab("Старт", "");
             ShowStartPage();
