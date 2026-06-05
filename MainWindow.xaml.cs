@@ -379,7 +379,7 @@ namespace QuickSurfBrowser
             { 
                 Text = title, 
                 TextAlignment = TextAlignment.Center, 
-                FontSize = 10, 
+                FontSize = 12, 
                 FontWeight = FontWeights.Medium 
             };
             
@@ -504,7 +504,7 @@ namespace QuickSurfBrowser
             { 
                 Text = title, 
                 TextAlignment = TextAlignment.Center, 
-                FontSize = 10, 
+                FontSize = 12, 
                 FontWeight = FontWeights.Medium 
             };
             
@@ -800,7 +800,7 @@ namespace QuickSurfBrowser
             {
                 Text = repo.FullName,
                 FontSize = 13,
-                FontWeight = FontWeights.Bold,
+                FontWeight = FontWeights.Normal,
                 Foreground = System.Windows.Media.Brushes.Black,
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 MaxWidth = 216
@@ -810,7 +810,7 @@ namespace QuickSurfBrowser
             {
                 Text = $"⭐ {FormatNumber(repo.StargazersCount)}    🍴 {FormatNumber(repo.ForksCount)}",
                 FontSize = 12,
-                FontWeight = FontWeights.Bold,
+                FontWeight = FontWeights.Normal,
                 Foreground = System.Windows.Media.Brushes.Black,
                 Opacity = 0.75,
                 Margin = new Thickness(0, 2, 0, 0)
@@ -820,7 +820,7 @@ namespace QuickSurfBrowser
             {
                 Text = repo.Language ?? "N/A",
                 FontSize = 10,
-                FontWeight = FontWeights.Bold,
+                FontWeight = FontWeights.Normal,
                 Foreground = System.Windows.Media.Brushes.Gray,
                 Margin = new Thickness(0, 1, 0, 0)
             };

@@ -34,7 +34,7 @@
     
     <Border Background="White" BorderBrush="#E5E0D8" BorderThickness="0,1" Height="36">
         <DockPanel Margin="8,0,8,0">
-            <TextBlock DockPanel.Dock="Left" Text="★" FontSize="14" VerticalAlignment="Center" 
+            <TextBlock DockPanel.Dock="Left" Text="★" FontSize="18" VerticalAlignment="Center" 
                        Foreground="#FF8C42" Margin="0,0,8,0" Cursor="Hand" 
                        ToolTip="Добавить текущую страницу в избранное"
                        MouseLeftButtonUp="AddCurrentPage_Click"/>
