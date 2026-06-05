@@ -17,7 +17,6 @@ namespace QuickSurfBrowser.Services
         public string IconUrl { get; set; } = "";
     }
     
-    // Для узкой панели избранного
     public class Bookmark
     {
         public string Title { get; set; } = "";
@@ -95,10 +94,9 @@ namespace QuickSurfBrowser.Services
             }
             catch { }
             
-            // Если закладок нет, создаём из Tiles
             if (Bookmarks.Count == 0 && Tiles.Count > 0)
             {
-                foreach (var tile in Tiles)
+                foreach (var tile in Tiles.OrderBy(t => t.Order))
                 {
                     Bookmarks.Add(new Bookmark
                     {
@@ -130,12 +128,21 @@ namespace QuickSurfBrowser.Services
                 Order = maxOrder
             });
             SaveBookmarks();
+            SyncBookmarksToTiles();
         }
         
         public void RemoveBookmark(Bookmark bookmark)
         {
             Bookmarks.Remove(bookmark);
             SaveBookmarks();
+            
+            var tile = Tiles.FirstOrDefault(t => t.Url == bookmark.Url);
+            if (tile != null)
+            {
+                Tiles.Remove(tile);
+                SaveTiles();
+            }
+            ReorderAll();
         }
         
         public void AddTile(string title, string url)
@@ -167,6 +174,14 @@ namespace QuickSurfBrowser.Services
         {
             Tiles.Remove(tile);
             SaveTiles();
+            
+            var bookmark = Bookmarks.FirstOrDefault(b => b.Url == tile.Url);
+            if (bookmark != null)
+            {
+                Bookmarks.Remove(bookmark);
+                SaveBookmarks();
+            }
+            ReorderAll();
         }
         
         public void IncrementVisitCount(string url)
@@ -180,29 +195,91 @@ namespace QuickSurfBrowser.Services
             }
         }
         
-        public void UpdateOrder(int oldOrder, int newOrder)
+        public void MoveBookmark(int oldIndex, int newIndex)
         {
-            var tile = Tiles.FirstOrDefault(t => t.Order == oldOrder);
-            if (tile == null) return;
+            if (oldIndex < 0 || oldIndex >= Bookmarks.Count) return;
+            if (newIndex < 0) newIndex = 0;
+            if (newIndex >= Bookmarks.Count) newIndex = Bookmarks.Count - 1;
+            if (oldIndex == newIndex) return;
             
-            if (newOrder > oldOrder)
+            var item = Bookmarks[oldIndex];
+            Bookmarks.RemoveAt(oldIndex);
+            Bookmarks.Insert(newIndex, item);
+            
+            for (int i = 0; i < Bookmarks.Count; i++)
             {
-                foreach (var t in Tiles.Where(t => t.Order > oldOrder && t.Order <= newOrder))
-                {
-                    t.Order--;
-                }
-            }
-            else
-            {
-                foreach (var t in Tiles.Where(t => t.Order >= newOrder && t.Order < oldOrder))
-                {
-                    t.Order++;
-                }
+                Bookmarks[i].Order = i;
             }
             
-            tile.Order = newOrder;
-            SortTilesByOrder();
+            SaveBookmarks();
+            SyncBookmarksToTiles();
+        }
+        
+        public void MoveTile(int oldIndex, int newIndex)
+        {
+            if (oldIndex < 0 || oldIndex >= Tiles.Count) return;
+            if (newIndex < 0) newIndex = 0;
+            if (newIndex >= Tiles.Count) newIndex = Tiles.Count - 1;
+            if (oldIndex == newIndex) return;
+            
+            var item = Tiles[oldIndex];
+            Tiles.RemoveAt(oldIndex);
+            Tiles.Insert(newIndex, item);
+            
+            for (int i = 0; i < Tiles.Count; i++)
+            {
+                Tiles[i].Order = i;
+            }
+            
             SaveTiles();
+            SyncTilesToBookmarks();
+        }
+        
+        private void SyncBookmarksToTiles()
+        {
+            for (int i = 0; i < Bookmarks.Count; i++)
+            {
+                var existingTile = Tiles.FirstOrDefault(t => t.Url == Bookmarks[i].Url);
+                if (existingTile != null)
+                {
+                    existingTile.Order = i;
+                }
+            }
+            Tiles = Tiles.OrderBy(t => t.Order).ToList();
+            SaveTiles();
+        }
+        
+        private void SyncTilesToBookmarks()
+        {
+            for (int i = 0; i < Tiles.Count; i++)
+            {
+                var existingBookmark = Bookmarks.FirstOrDefault(b => b.Url == Tiles[i].Url);
+                if (existingBookmark != null)
+                {
+                    existingBookmark.Order = i;
+                }
+            }
+            var sortedBookmarks = Bookmarks.OrderBy(b => b.Order).ToList();
+            Bookmarks.Clear();
+            foreach (var b in sortedBookmarks)
+            {
+                Bookmarks.Add(b);
+            }
+            SaveBookmarks();
+        }
+        
+        private void ReorderAll()
+        {
+            for (int i = 0; i < Tiles.Count; i++)
+            {
+                Tiles[i].Order = i;
+            }
+            for (int i = 0; i < Bookmarks.Count; i++)
+            {
+                Bookmarks[i].Order = i;
+            }
+            SaveTiles();
+            SaveBookmarks();
         }
         
         public void SortTilesByOrder()
@@ -218,6 +295,7 @@ namespace QuickSurfBrowser.Services
                 Tiles[i].Order = i;
             }
             SaveTiles();
+            SyncTilesToBookmarks();
         }
         
         private void SaveTiles()

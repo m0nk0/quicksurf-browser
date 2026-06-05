@@ -29,6 +29,11 @@ namespace QuickSurfBrowser
         private readonly ObservableCollection<TabItemModel> _tabsCollection = new();
         private System.Timers.Timer _gitHubTimer;
         
+        // Drag-and-drop поля
+        private Point _dragStartPoint;
+        private Border? _draggedTile;
+        private int _dragStartTileIndex = -1;
+        
         public ObservableCollection<TabItemModel> TabsCollection => _tabsCollection;
 
         public MainWindow()
@@ -75,10 +80,8 @@ namespace QuickSurfBrowser
             UpdateContextStatus();
             await _browser.InitializeAsync();
             
-            // AI Worker в фоне (не блокируем UI)
             _ = _aiWorker.InitializeAsync();
             
-            // Безопасная инициализация плавающего меню
             if (WebView.CoreWebView2 != null)
             {
                 await _floatingMenuService.InitializeAsync();
@@ -92,11 +95,16 @@ namespace QuickSurfBrowser
                 };
             }
             
-            // Настройка узкой панели избранного
             BookmarksBarControl.SetBookmarks(_tiles.Bookmarks);
             BookmarksBarControl.BookmarkClicked += NavigateToBookmark;
             BookmarksBarControl.AddCurrentPageRequested += AddCurrentPageToBookmarks;
             BookmarksBarControl.BookmarkRemoved += RemoveBookmark;
+            BookmarksBarControl.BookmarkMoved += (oldIndex, newIndex) =>
+            {
+                _tiles.MoveBookmark(oldIndex, newIndex);
+                BookmarksBarControl.RefreshBookmarks();
+                RenderTiles();
+            };
             
             _tabs.CreateNewTab("Старт", "");
             ShowStartPage();
@@ -227,7 +235,6 @@ namespace QuickSurfBrowser
             _tiles.RemoveBookmark(bookmark);
             BookmarksBarControl.RefreshBookmarks();
             
-            // Также удаляем из крупных плиток, если есть
             var tile = _tiles.Tiles.FirstOrDefault(t => t.Url == bookmark.Url);
             if (tile != null)
             {
@@ -340,7 +347,7 @@ namespace QuickSurfBrowser
         private void RenderTiles()
         {
             TilesWrapPanel.Children.Clear();
-            var sortedTiles = _tiles.Tiles.OrderByDescending(t => t.VisitCount).ThenByDescending(t => t.LastVisit).ToList();
+            var sortedTiles = _tiles.Tiles.OrderBy(t => t.Order).ToList();
             foreach (var tile in sortedTiles)
                 TilesWrapPanel.Children.Add(CreateTile(tile.Title, tile.Url, true));
         }
@@ -358,7 +365,8 @@ namespace QuickSurfBrowser
                 CornerRadius = new CornerRadius(12),
                 Cursor = Cursors.Hand,
                 ToolTip = url,
-                Tag = url
+                Tag = url,
+                AllowDrop = true
             };
             
             var stack = new StackPanel
@@ -379,13 +387,53 @@ namespace QuickSurfBrowser
             { 
                 Text = title, 
                 TextAlignment = TextAlignment.Center, 
-                FontSize = 12, 
+                FontSize = 10, 
                 FontWeight = FontWeights.Medium 
             };
             
             stack.Children.Add(img);
             stack.Children.Add(text);
             border.Child = stack;
+            
+            // Drag-and-drop для крупных плиток
+            border.PreviewMouseLeftButtonDown += (s, e) =>
+            {
+                _dragStartPoint = e.GetPosition(null);
+                _draggedTile = border;
+                _dragStartTileIndex = TilesWrapPanel.Children.IndexOf(border);
+                border.CaptureMouse();
+            };
+            
+            border.PreviewMouseMove += (s, e) =>
+            {
+                if (_draggedTile == null || e.LeftButton != MouseButtonState.Pressed) return;
+                var diff = _dragStartPoint - e.GetPosition(null);
+                if (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance)
+                {
+                    DragDrop.DoDragDrop(_draggedTile, _draggedTile, DragDropEffects.Move);
+                    _draggedTile = null;
+                }
+            };
+            
+            border.DragOver += (s, e) => e.Effects = DragDropEffects.Move;
+            
+            border.Drop += (s, e) =>
+            {
+                if (_draggedTile == null) return;
+                
+                int oldIndex = _dragStartTileIndex;
+                int newIndex = TilesWrapPanel.Children.IndexOf(border);
+                
+                if (oldIndex >= 0 && newIndex >= 0 && oldIndex != newIndex)
+                {
+                    _tiles.MoveTile(oldIndex, newIndex);
+                    RenderTiles();
+                    BookmarksBarControl.RefreshBookmarks();
+                }
+                
+                _draggedTile.ReleaseMouseCapture();
+                _draggedTile = null;
+            };
             
             border.MouseLeftButtonUp += (s, e) => { ShowBrowser(); Navigate(url); };
             
@@ -399,7 +447,6 @@ namespace QuickSurfBrowser
                         if (tileToRemove != null)
                         {
                             _tiles.RemoveTile(tileToRemove);
-                            // Также удаляем из узкой панели
                             var bookmark = _tiles.Bookmarks.FirstOrDefault(b => b.Url == url);
                             if (bookmark != null)
                             {
@@ -504,7 +551,7 @@ namespace QuickSurfBrowser
             { 
                 Text = title, 
                 TextAlignment = TextAlignment.Center, 
-                FontSize = 12, 
+                FontSize = 10, 
                 FontWeight = FontWeights.Medium 
             };
             
@@ -800,7 +847,7 @@ namespace QuickSurfBrowser
             {
                 Text = repo.FullName,
                 FontSize = 13,
-                FontWeight = FontWeights.Normal,
+                FontWeight = FontWeights.Bold,
                 Foreground = System.Windows.Media.Brushes.Black,
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 MaxWidth = 216
@@ -810,7 +857,7 @@ namespace QuickSurfBrowser
             {
                 Text = $"⭐ {FormatNumber(repo.StargazersCount)}    🍴 {FormatNumber(repo.ForksCount)}",
                 FontSize = 12,
-                FontWeight = FontWeights.Normal,
+                FontWeight = FontWeights.Bold,
                 Foreground = System.Windows.Media.Brushes.Black,
                 Opacity = 0.75,
                 Margin = new Thickness(0, 2, 0, 0)
@@ -820,7 +867,7 @@ namespace QuickSurfBrowser
             {
                 Text = repo.Language ?? "N/A",
                 FontSize = 10,
-                FontWeight = FontWeights.Normal,
+                FontWeight = FontWeights.Bold,
                 Foreground = System.Windows.Media.Brushes.Gray,
                 Margin = new Thickness(0, 1, 0, 0)
             };
